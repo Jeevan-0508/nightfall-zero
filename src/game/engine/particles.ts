@@ -20,9 +20,21 @@ function spawn(
   particles.push({ id: particleIdCounter, kind, position: { ...position }, velocity, age: 0, ttl, color, text, crit })
 }
 
-export function spawnMuzzleFlash(particles: Particle[], position: Vector2, angle: number): void {
+const WEAPON_MUZZLE_COLOR: Record<string, string> = {
+  pistol: '#fff2b0',
+  shotgun: '#ffb04d',
+  smg: '#ffe28a',
+  'assault-rifle': '#ffcf6a',
+  sniper: '#bfe3ff',
+  flamethrower: '#ff6a3d',
+  'rocket-launcher': '#ff8a3d',
+  'energy-weapon': '#5be3e3',
+}
+
+export function spawnMuzzleFlash(particles: Particle[], position: Vector2, angle: number, weaponId?: string): void {
   const dir = fromAngle(angle, 40)
-  spawn(particles, 'muzzle', position, dir, 0.06, '#fff2b0')
+  const color = (weaponId && WEAPON_MUZZLE_COLOR[weaponId]) || '#fff2b0'
+  spawn(particles, 'muzzle', position, dir, 0.06, color)
 }
 
 export function spawnImpact(particles: Particle[], rng: Rng, position: Vector2, count = 5): void {

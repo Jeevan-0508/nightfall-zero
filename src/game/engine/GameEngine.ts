@@ -235,7 +235,7 @@ export class GameEngine {
         this.projectiles.push(...result.projectiles)
         this.stats.shotsFired += 1
         this.recoilAmount = weapon.recoil
-        spawnMuzzleFlash(this.particles, this.player.position, this.player.rotation)
+        spawnMuzzleFlash(this.particles, this.player.position, this.player.rotation, weapon.id)
         spawnShellCasing(this.particles, this.player.position, this.player.rotation)
         this.pushEvent('shotFired')
       }

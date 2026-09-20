@@ -133,20 +133,80 @@ function drawHitIndicators(ctx: CanvasRenderingContext2D, engine: GameEngine, in
   }
 }
 
+function withAlpha(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '')
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+interface MapPalette {
+  skyTop: string
+  skyMid: string
+  skyBottom: string
+  gridV: string
+  gridH: string
+  fog: string
+}
+
+const MAP_PALETTES: Record<string, MapPalette> = {
+  crossroads: {
+    skyTop: '#120b1c',
+    skyMid: '#0b0e1a',
+    skyBottom: '#050609',
+    gridV: '90, 60, 160',
+    gridH: '40, 160, 190',
+    fog: '140, 160, 200',
+  },
+  bunker: {
+    skyTop: '#1c1108',
+    skyMid: '#140d0a',
+    skyBottom: '#070504',
+    gridV: '170, 90, 40',
+    gridH: '200, 140, 40',
+    fog: '200, 160, 120',
+  },
+  scatter: {
+    skyTop: '#0a0f1c',
+    skyMid: '#080b16',
+    skyBottom: '#03040a',
+    gridV: '60, 90, 190',
+    gridH: '130, 60, 200',
+    fog: '150, 150, 220',
+  },
+}
+
+function mapPalette(engine: GameEngine): MapPalette {
+  return MAP_PALETTES[engine.map.id] ?? MAP_PALETTES.crossroads
+}
+
+const WEAPON_TRACER_COLOR: Record<string, string> = {
+  pistol: '#ffcf6a',
+  shotgun: '#ffb04d',
+  smg: '#ffe28a',
+  'assault-rifle': '#ffcf6a',
+  sniper: '#bfe3ff',
+  flamethrower: '#ff6a3d',
+  'rocket-launcher': '#ff8a3d',
+  'energy-weapon': '#5be3e3',
+}
+
 function drawBackground(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   const t = engine.stats.survivalTime
 
+  const palette = mapPalette(engine)
   const sky = ctx.createLinearGradient(0, 0, 0, ARENA_HEIGHT)
-  sky.addColorStop(0, '#120b1c')
-  sky.addColorStop(0.35, '#0b0e1a')
-  sky.addColorStop(1, '#050609')
+  sky.addColorStop(0, palette.skyTop)
+  sky.addColorStop(0.35, palette.skyMid)
+  sky.addColorStop(1, palette.skyBottom)
   ctx.fillStyle = sky
   ctx.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT)
 
   drawSkyline(ctx)
 
   const pulse = 0.5 + Math.sin(t * 0.6) * 0.5
-  ctx.strokeStyle = `rgba(90, 60, 160, ${0.06 + pulse * 0.05})`
+  ctx.strokeStyle = `rgba(${palette.gridV}, ${0.06 + pulse * 0.05})`
   ctx.lineWidth = 1
   for (let x = 0; x <= ARENA_WIDTH; x += GRID_SIZE) {
     ctx.beginPath()
@@ -154,7 +214,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, engine: GameEngine): void
     ctx.lineTo(x, ARENA_HEIGHT)
     ctx.stroke()
   }
-  ctx.strokeStyle = `rgba(40, 160, 190, ${0.05 + pulse * 0.05})`
+  ctx.strokeStyle = `rgba(${palette.gridH}, ${0.05 + pulse * 0.05})`
   for (let y = 0; y <= ARENA_HEIGHT; y += GRID_SIZE) {
     ctx.beginPath()
     ctx.moveTo(0, y)
@@ -221,6 +281,7 @@ function drawCornerBrackets(ctx: CanvasRenderingContext2D): void {
 }
 
 function drawGroundFog(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  const fogPalette = mapPalette(engine)
   const t = engine.stats.survivalTime
   ctx.save()
   for (let i = 0; i < 3; i++) {
@@ -228,8 +289,8 @@ function drawGroundFog(ctx: CanvasRenderingContext2D, engine: GameEngine): void 
     const cy = ARENA_HEIGHT * (0.65 + i * 0.12)
     const r = 220 + i * 40
     const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
-    gradient.addColorStop(0, 'rgba(140, 160, 200, 0.05)')
-    gradient.addColorStop(1, 'rgba(140, 160, 200, 0)')
+    gradient.addColorStop(0, `rgba(${fogPalette.fog}, 0.05)`)
+    gradient.addColorStop(1, `rgba(${fogPalette.fog}, 0)`)
     ctx.fillStyle = gradient
     ctx.beginPath()
     ctx.arc(cx, cy, r, 0, Math.PI * 2)
@@ -617,7 +678,8 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine): voi
     const ny = p.velocity.y / speed
 
     ctx.save()
-    ctx.shadowColor = '#ffcf6a'
+    const tracerColor = WEAPON_TRACER_COLOR[p.weaponId] ?? '#ffcf6a'
+    ctx.shadowColor = tracerColor
     ctx.shadowBlur = 5
     const tracer = ctx.createLinearGradient(
       p.position.x - nx * trailLength,
@@ -625,8 +687,8 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine): voi
       p.position.x,
       p.position.y,
     )
-    tracer.addColorStop(0, 'rgba(255, 207, 106, 0)')
-    tracer.addColorStop(1, 'rgba(255, 233, 168, 0.9)')
+    tracer.addColorStop(0, withAlpha(tracerColor, 0))
+    tracer.addColorStop(1, withAlpha(tracerColor, 0.9))
     ctx.strokeStyle = tracer
     ctx.lineWidth = p.radius * 1.4
     ctx.lineCap = 'round'
@@ -694,9 +756,9 @@ function drawParticlesOver(ctx: CanvasRenderingContext2D, engine: GameEngine): v
       ctx.translate(p.position.x, p.position.y)
       ctx.rotate(angle)
       const flashGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 16 * flicker)
-      flashGrad.addColorStop(0, 'rgba(255, 245, 210, 0.95)')
-      flashGrad.addColorStop(0.5, 'rgba(255, 190, 90, 0.55)')
-      flashGrad.addColorStop(1, 'rgba(255, 140, 40, 0)')
+      flashGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
+      flashGrad.addColorStop(0.5, withAlpha(p.color, 0.6))
+      flashGrad.addColorStop(1, withAlpha(p.color, 0))
       ctx.fillStyle = flashGrad
       ctx.beginPath()
       ctx.moveTo(0, 0)

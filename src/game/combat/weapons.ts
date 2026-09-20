@@ -64,6 +64,7 @@ function spawnOneProjectile(
     distanceRemaining: weapon.range,
     pierceRemaining: weapon.pierceCount ?? 0,
     explosionRadius: weapon.explosionRadius,
+    weaponId: weapon.id,
   }
 }
 

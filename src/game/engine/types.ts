@@ -143,6 +143,7 @@ export interface Projectile {
   radius: number
   distanceRemaining: number
   pierceRemaining: number
+  weaponId: string
   explosionRadius?: number
 }
 
