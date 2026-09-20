@@ -220,6 +220,10 @@ Requires [bun](https://bun.sh).
   is only one save, no cloud sync, and no way to export or reset it from the UI.
 - **No sound files.** Every effect is a synthesized Web Audio oscillator, not a mixed sample, so combat audio is
   functional rather than produced.
+- **Visual pass, unverified by eye.** The atmosphere, silhouettes, weapon FX, tactical HUD, and death sequence
+  were all built and shipped in one automated session with no way to screenshot the running canvas. Every
+  change passed typecheck, lint, build, and the full test suite, but the actual look has not been confirmed
+  against the live site yet.
 
 ## Licence
 
