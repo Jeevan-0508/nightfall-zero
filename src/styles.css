@@ -2,6 +2,12 @@
   box-sizing: border-box;
 }
 
+:root {
+  --accent-cyan: #5be3e3;
+  --accent-red: #d64545;
+  --accent-gold: #ffcf5c;
+}
+
 html, body, #root {
   margin: 0;
   height: 100%;
@@ -17,6 +23,61 @@ body {
 button {
   font-family: inherit;
   cursor: pointer;
+}
+
+
+/* ---------- Tactical panel chrome (shared by every menu/overlay panel) ---------- */
+
+.menu-panel,
+.loadout-panel,
+.armory-panel,
+.gameover-panel,
+.pause-panel,
+.upgrade-panel {
+  position: relative;
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+  box-shadow:
+    0 0 0 1px rgba(91, 227, 227, 0.18),
+    0 0 40px rgba(91, 227, 227, 0.06),
+    0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.menu-panel::before,
+.loadout-panel::before,
+.armory-panel::before,
+.gameover-panel::before,
+.pause-panel::before,
+.upgrade-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.015) 0px,
+    rgba(255, 255, 255, 0.015) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  clip-path: inherit;
+}
+
+.menu-panel::after,
+.loadout-panel::after,
+.armory-panel::after,
+.gameover-panel::after,
+.pause-panel::after,
+.upgrade-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  pointer-events: none;
+  border-top: 2px solid var(--accent-cyan);
+  border-left: 2px solid var(--accent-cyan);
+  opacity: 0.55;
 }
 
 /* ---------- Main Menu ---------- */
@@ -333,6 +394,142 @@ button {
   background: rgba(120, 140, 170, 0.15);
   color: #5c7290;
   cursor: default;
+}
+
+
+/* ---------- Neon hover glow (additive, layered onto existing buttons/cards) ---------- */
+
+.menu-play:hover,
+.armory-buy:hover:not(:disabled),
+.gameover-retry:hover {
+  box-shadow: 0 0 18px rgba(216, 69, 69, 0.55), 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
+.menu-armory:hover,
+.loadout-back:hover,
+.gameover-menu:hover,
+.gameover-seed:hover {
+  box-shadow: 0 0 14px rgba(91, 227, 227, 0.3);
+}
+
+.loadout-card:hover,
+.mode-card:hover {
+  box-shadow: 0 0 14px rgba(91, 227, 227, 0.25);
+}
+
+.loadout-card-selected,
+.mode-card-selected {
+  box-shadow: 0 0 16px rgba(214, 69, 69, 0.4);
+}
+
+/* ---------- Menu backdrop: animated scanline sweep ---------- */
+
+.menu-screen {
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(91, 227, 227, 0.025) 0px,
+    rgba(91, 227, 227, 0.025) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+.menu-screen::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 120px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(91, 227, 227, 0.06), transparent);
+  animation: menu-scan 6s linear infinite;
+}
+
+@keyframes menu-scan {
+  0% { top: -120px; }
+  100% { top: 100%; }
+}
+
+.menu-title {
+  text-shadow: 0 0 24px rgba(216, 69, 69, 0.35), 0 0 2px rgba(255, 255, 255, 0.4);
+}
+
+/* ---------- Tactical HUD chrome ---------- */
+
+.hud-top {
+  background: linear-gradient(90deg, rgba(6, 10, 16, 0.65), rgba(6, 10, 16, 0.15));
+  border-bottom: 1px solid rgba(91, 227, 227, 0.25);
+  padding: 6px 14px 8px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  width: fit-content;
+}
+
+.hud-left {
+  background: rgba(6, 10, 16, 0.55);
+  border: 1px solid rgba(91, 227, 227, 0.2);
+  padding: 8px 10px;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+}
+
+.hud-weapon {
+  background: rgba(6, 10, 16, 0.55);
+  border: 1px solid rgba(214, 69, 69, 0.25);
+  padding: 8px 14px;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%, 0 0);
+}
+
+.hud-weapon-ammo {
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.hud-bar,
+.hud-ability,
+.hud-boss-bar {
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+.hud-bar::after,
+.hud-ability::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 17px,
+    rgba(0, 0, 0, 0.35) 17px,
+    rgba(0, 0, 0, 0.35) 19px
+  );
+}
+
+.hud-boss {
+  width: 420px;
+}
+
+.hud-boss-name {
+  font-size: 15px;
+  justify-content: center;
+}
+
+.hud-boss-bar {
+  height: 13px;
+  box-shadow: 0 0 12px rgba(255, 207, 92, 0.35);
+  animation: hud-boss-bar-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes hud-boss-bar-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 207, 92, 0.25); }
+  50% { box-shadow: 0 0 16px rgba(255, 207, 92, 0.5); }
 }
 
 /* ---------- Game Stage ---------- */
