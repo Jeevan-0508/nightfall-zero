@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 
 function formatTime(seconds: number): string {
@@ -10,6 +11,14 @@ export function GameOverOverlay() {
   const lastResult = useGameStore((s) => s.lastResult)
   const startRun = useGameStore((s) => s.startRun)
   const returnToMenu = useGameStore((s) => s.returnToMenu)
+  const [copied, setCopied] = useState(false)
+
+  function copySeed() {
+    if (lastResult === null) return
+    void navigator.clipboard.writeText(String(lastResult.seed))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   return (
     <div className="gameover-overlay">
@@ -30,6 +39,9 @@ export function GameOverOverlay() {
             <span className="gameover-stat-label">WAVE REACHED</span>
           </div>
         </div>
+        <button className="gameover-seed" onClick={copySeed}>
+          {copied ? 'COPIED' : `SEED ${lastResult?.seed ?? 0} · COPY`}
+        </button>
         <button className="gameover-retry" onClick={startRun}>
           TRY AGAIN
         </button>

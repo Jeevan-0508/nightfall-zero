@@ -19,3 +19,13 @@ export function rangeFloat(rng: Rng, min: number, max: number): number {
 export function chance(rng: Rng, probability: number): boolean {
   return rng() < probability
 }
+
+/** FNV-1a 32-bit hash, so a player-typed seed string ("shared with a friend") becomes a valid numeric seed. */
+export function hashSeed(input: string): number {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
+}

@@ -9,6 +9,7 @@ export interface RunResult {
   survivalTime: number
   kills: number
   waveReached: number
+  seed: number
 }
 
 interface GameStore {
@@ -18,12 +19,14 @@ interface GameStore {
   pendingUpgrades: UpgradeOption[] | null
   selectedWeaponId: string
   selectedModeId: string
+  seedInput: string
   paused: boolean
   goToLoadout: () => void
   goToArmory: () => void
   goToSettings: () => void
   selectWeapon: (weaponId: string) => void
   selectMode: (modeId: string) => void
+  setSeedInput: (seedInput: string) => void
   setPaused: (paused: boolean) => void
   startRun: () => void
   endRun: (result: RunResult) => void
@@ -41,12 +44,14 @@ export const useGameStore = create<GameStore>((set) => ({
   pendingUpgrades: null,
   selectedWeaponId: assaultRifle.id,
   selectedModeId: defaultGameMode.id,
+  seedInput: '',
   paused: false,
   goToLoadout: () => set({ view: 'loadout' }),
   goToArmory: () => set({ view: 'armory' }),
   goToSettings: () => set({ view: 'settings' }),
   selectWeapon: (weaponId) => set({ selectedWeaponId: weaponId }),
   selectMode: (modeId) => set({ selectedModeId: modeId }),
+  setSeedInput: (seedInput) => set({ seedInput }),
   setPaused: (paused) => set({ paused }),
   startRun: () => set((s) => ({ view: 'playing', runId: s.runId + 1, lastResult: null, pendingUpgrades: null, paused: false })),
   endRun: (result) => set({ view: 'gameover', lastResult: result, pendingUpgrades: null, paused: false }),

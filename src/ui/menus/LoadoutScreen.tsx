@@ -7,6 +7,8 @@ export function LoadoutScreen() {
   const selectWeapon = useGameStore((s) => s.selectWeapon)
   const selectedModeId = useGameStore((s) => s.selectedModeId)
   const selectMode = useGameStore((s) => s.selectMode)
+  const seedInput = useGameStore((s) => s.seedInput)
+  const setSeedInput = useGameStore((s) => s.setSeedInput)
   const startRun = useGameStore((s) => s.startRun)
   const returnToMenu = useGameStore((s) => s.returnToMenu)
 
@@ -43,6 +45,20 @@ export function LoadoutScreen() {
               <span className="mode-card-desc">{mode.description}</span>
             </button>
           ))}
+        </div>
+
+        <div className="settings-row loadout-seed-row">
+          <label className="settings-label" htmlFor="seed-input">
+            SEED
+          </label>
+          <input
+            id="seed-input"
+            className="loadout-seed-input"
+            type="text"
+            placeholder="Leave blank for a random run"
+            value={seedInput}
+            onChange={(e) => setSeedInput(e.target.value)}
+          />
         </div>
 
         <button className="menu-play" onClick={startRun}>

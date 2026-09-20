@@ -90,6 +90,7 @@ export class GameEngine {
   pendingUpgradeChoices: UpgradeOption[] = []
   map: MapDefinition
   mode: GameModeDefinition
+  readonly seed: number
   private pendingLevelUps = 0
   private rng: Rng
   private nextWaveDelay = 0
@@ -101,6 +102,7 @@ export class GameEngine {
     metaUpgradeRanks: Record<string, number> = {},
     gameModeId: string = defaultGameMode.id,
   ) {
+    this.seed = seed >>> 0
     this.rng = mulberry32(seed)
     this.map = pickMap(this.rng)
     this.mode = getGameMode(gameModeId)

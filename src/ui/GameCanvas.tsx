@@ -6,6 +6,7 @@ import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
 import { useMetaStore } from '../store/metaStore'
 import { getGameMode } from '../content/gameModes'
+import { hashSeed } from '../game/engine/rng'
 import { weaponOrder } from '../content/weapons'
 import {
   playBossBarrage,
@@ -53,6 +54,7 @@ export function GameCanvas() {
   const setPendingUpgrades = useGameStore((s) => s.setPendingUpgrades)
   const selectedWeaponId = useGameStore((s) => s.selectedWeaponId)
   const selectedModeId = useGameStore((s) => s.selectedModeId)
+  const seedInput = useGameStore((s) => s.seedInput)
   const upgradeRanks = useMetaStore((s) => s.upgradeRanks)
 
   useEffect(() => {
@@ -62,7 +64,8 @@ export function GameCanvas() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const engine = new GameEngine(undefined, selectedWeaponId, upgradeRanks, selectedModeId)
+    const numericSeed = seedInput.trim() ? hashSeed(seedInput.trim()) : undefined
+    const engine = new GameEngine(numericSeed, selectedWeaponId, upgradeRanks, selectedModeId)
     const input: InputState = {
       up: false,
       down: false,
@@ -238,6 +241,7 @@ export function GameCanvas() {
           survivalTime: engine.stats.survivalTime,
           kills: engine.stats.kills,
           waveReached: Math.max(engine.stats.waveReached, engine.wave.waveIndex),
+          seed: engine.seed,
         }
         endRun(result)
         useMetaStore.getState().recordRunResult(result, getGameMode(selectedModeId).scrapMultiplier)
@@ -255,7 +259,7 @@ export function GameCanvas() {
       canvas.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [setSnapshot, endRun, setPendingUpgrades, selectedWeaponId, upgradeRanks, selectedModeId])
+  }, [setSnapshot, endRun, setPendingUpgrades, selectedWeaponId, upgradeRanks, selectedModeId, seedInput])
 
   return (
     <canvas

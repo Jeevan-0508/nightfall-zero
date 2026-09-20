@@ -18,7 +18,7 @@
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![tests](https://img.shields.io/badge/tests-104_passing-22c55e?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-112_passing-22c55e?style=for-the-badge)
 ![Pages](https://img.shields.io/badge/GitHub%20Pages-LIVE-22c55e?style=for-the-badge&logo=github)
 ![MIT](https://img.shields.io/badge/Licence-MIT-38bdf8?style=for-the-badge)
 
@@ -131,6 +131,14 @@ engine applies once at construction; no separate content, just different pressur
 | **Blitz** | Enemies spawn 30% faster, boss every 3 waves. Short, frantic runs. |
 | **Onslaught** | Enemies hit 40% harder and carry 30% more health. Scrap payouts run 50% higher. |
 
+## 🎲 Seeds & Replay Codes
+
+Every run is one deterministic simulation driven by a single numeric seed. Leave the loadout screen's seed field
+blank and it draws a fresh random one; type anything into it (a word, a friend's name, a number) and that text is
+hashed into a seed with FNV-1a, so the same text always produces the same run. When you die, the game-over screen
+shows the run's exact seed with a one-click copy button, paste it back into the loadout screen and the wave
+spawns, enemy positions, and boss timing all replay identically, matching the same inputs.
+
 ## 🔧 The Armory
 
 Every run pays out scrap: two per kill, one per second survived, ten per wave reached, boosted by the
@@ -158,7 +166,7 @@ Balance, ranks, and lifetime stats (total runs, total kills, best survival time,
 | Rendering | **Canvas 2D** (hand-rolled) | The actual game: player, enemies, projectiles, particles, obstacles |
 | State | **Zustand 5** | Menu/loadout/armory/game-over view routing, HUD snapshot store, `persist`-backed meta-progression |
 | Build | **Vite 8** | Dev server and production bundling |
-| Testing | **Vitest 5** (happy-dom) | 104 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
+| Testing | **Vitest 5** (happy-dom) | 112 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
 | Lint | **oxlint** | Fast, zero-config linting |
 | Runtime | **bun** | Install, dev, test, build |
 | Hosting | **GitHub Pages** | Static deploy via GitHub Actions on every push to `main` |
@@ -178,7 +186,7 @@ src/game/meta/        Pure meta-progression logic: scrap payout, upgrade cost cu
 src/content/          Data only: weapons, enemies, waves, upgrades, abilities, maps, meta-upgrades
 src/store/            Zustand stores: game view/loadout/armory, HUD snapshot, persisted meta-progression
 src/ui/               React components: canvas host, HUD, menus, overlays
-src/tests/            104 tests, one file per subsystem, testing pure functions directly
+src/tests/            112 tests, one file per subsystem, testing pure functions directly
 ```
 
 The engine is a plain class with no framework dependency: `GameEngine.update(dt, input)` advances one frame and
@@ -193,7 +201,7 @@ git clone https://github.com/Jeevan-0508/nightfall-zero.git
 cd nightfall-zero
 bun install
 bun run dev         # http://localhost:5173/nightfall-zero/
-bun run test        # 104 tests
+bun run test        # 112 tests
 bun run typecheck
 bun run build
 ```
