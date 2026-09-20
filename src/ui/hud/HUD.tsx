@@ -1,4 +1,5 @@
 import { useHudStore } from '../../store/hudStore'
+import { ARENA_HEIGHT, ARENA_WIDTH } from '../../game/engine/types'
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -23,6 +24,23 @@ export function HUD() {
         <div className="hud-map">{snapshot.mapName.toUpperCase()} &middot; {snapshot.modeName.toUpperCase()}</div>
         <div className="hud-level">LV {snapshot.level} &middot; {snapshot.kills} KILLS</div>
         {snapshot.combo >= 2 && <div className="hud-combo">&times;{snapshot.combo} COMBO</div>}
+      </div>
+
+      <div className="hud-minimap">
+        {snapshot.radarBlips.map((blip) => (
+          <div
+            key={blip.id}
+            className={`hud-minimap-blip${blip.boss ? ' hud-minimap-blip-boss' : ''}`}
+            style={{ left: `${(blip.x / ARENA_WIDTH) * 100}%`, top: `${(blip.y / ARENA_HEIGHT) * 100}%` }}
+          />
+        ))}
+        <div
+          className="hud-minimap-player"
+          style={{
+            left: `${(snapshot.playerPosition.x / ARENA_WIDTH) * 100}%`,
+            top: `${(snapshot.playerPosition.y / ARENA_HEIGHT) * 100}%`,
+          }}
+        />
       </div>
 
       <div className="hud-xp-bar">

@@ -301,4 +301,6 @@ export interface HudSnapshot {
   mapName: string
   modeName: string
   combo: number
+  playerPosition: Vector2
+  radarBlips: { id: number; x: number; y: number; boss: boolean }[]
 }

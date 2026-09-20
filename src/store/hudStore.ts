@@ -24,6 +24,8 @@ const initialSnapshot: HudSnapshot = {
   mapName: 'Crossroads',
   modeName: 'Standard',
   combo: 0,
+  playerPosition: { x: 480, y: 300 },
+  radarBlips: [],
 }
 
 interface HudStore {

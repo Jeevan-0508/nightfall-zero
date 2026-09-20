@@ -623,6 +623,47 @@ button {
   text-transform: uppercase;
 }
 
+.hud-minimap {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  width: 140px;
+  height: 88px;
+  background: rgba(6, 10, 16, 0.55);
+  border: 1px solid rgba(91, 227, 227, 0.3);
+  box-shadow: 0 0 12px rgba(91, 227, 227, 0.15) inset;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  overflow: hidden;
+}
+
+.hud-minimap-blip {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px;
+  border-radius: 50%;
+  background: var(--accent-red);
+  box-shadow: 0 0 4px rgba(214, 69, 69, 0.9);
+}
+
+.hud-minimap-blip-boss {
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  background: var(--accent-gold);
+  box-shadow: 0 0 6px rgba(255, 207, 92, 0.9);
+}
+
+.hud-minimap-player {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 6px rgba(91, 227, 227, 1);
+}
+
 .hud-xp-bar {
   position: absolute;
   top: 0;

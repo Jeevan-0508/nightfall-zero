@@ -662,6 +662,10 @@ export class GameEngine {
       mapName: this.map.name,
       modeName: this.mode.name,
       combo: this.comboCount,
+      playerPosition: { x: this.player.position.x, y: this.player.position.y },
+      radarBlips: this.enemyList
+        .filter((e) => e.alive)
+        .map((e) => ({ id: e.id, x: e.position.x, y: e.position.y, boss: enemyDefs[e.defId]?.behavior === 'boss' })),
       abilities: abilityOrder.map((def) => {
         const abilityState = this.player.abilities[def.id]
         return {
