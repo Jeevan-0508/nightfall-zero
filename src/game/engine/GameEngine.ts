@@ -46,10 +46,12 @@ import {
 } from '../waves/waveManager'
 import {
   spawnDamageText,
+  spawnDashTrail,
   spawnDeathBurst,
   spawnExplosion,
   spawnHitMarker,
   spawnImpact,
+  spawnLevelUpBurst,
   spawnMuzzleFlash,
   spawnShellCasing,
   spawnSpawnRing,
@@ -182,6 +184,7 @@ export class GameEngine {
       this.status = 'levelup'
       this.pendingUpgradeChoices = pickUpgradeChoices(this.rng)
       this.pushEvent('levelUp')
+      spawnLevelUpBurst(this.particles, this.rng, this.player.position)
     }
   }
 
@@ -263,12 +266,14 @@ export class GameEngine {
   }
 
   private activateDash(): void {
+    const fromPos = { x: this.player.position.x, y: this.player.position.y }
     const dir = fromAngle(this.player.rotation)
     this.player.position = {
       x: clamp(this.player.position.x + dir.x * DASH_DISTANCE, this.player.radius, ARENA_WIDTH - this.player.radius),
       y: clamp(this.player.position.y + dir.y * DASH_DISTANCE, this.player.radius, ARENA_HEIGHT - this.player.radius),
     }
     this.player.dashInvulnerableTimer = DASH_IFRAME_DURATION
+    spawnDashTrail(this.particles, fromPos, this.player.position)
     this.pushEvent('dashUsed')
   }
 

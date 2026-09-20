@@ -793,6 +793,15 @@ function drawParticlesOver(ctx: CanvasRenderingContext2D, engine: GameEngine): v
       ctx.stroke()
     } else if (p.kind === 'explosion') {
       drawExplosion(ctx, p)
+    } else if (p.kind === 'dashTrail') {
+      const fade = 1 - p.age / p.ttl
+      const grad = ctx.createRadialGradient(p.position.x, p.position.y, 0, p.position.x, p.position.y, 15)
+      grad.addColorStop(0, withAlpha(p.color, fade * 0.5))
+      grad.addColorStop(1, withAlpha(p.color, 0))
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.arc(p.position.x, p.position.y, 15, 0, Math.PI * 2)
+      ctx.fill()
     }
   }
   ctx.globalAlpha = 1

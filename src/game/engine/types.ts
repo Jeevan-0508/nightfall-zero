@@ -175,6 +175,7 @@ export type ParticleKind =
   | 'shell'
   | 'hitmarker'
   | 'spawnRing'
+  | 'dashTrail'
   | 'explosion'
 
 export interface Particle {

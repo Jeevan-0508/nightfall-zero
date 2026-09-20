@@ -63,6 +63,25 @@ export function spawnHitMarker(particles: Particle[], position: Vector2, crit: b
   spawn(particles, 'hitmarker', position, { x: 0, y: 0 }, crit ? 0.22 : 0.14, crit ? '#ff5252' : '#f2f2f2', undefined, crit)
 }
 
+export function spawnLevelUpBurst(particles: Particle[], rng: Rng, position: Vector2): void {
+  spawn(particles, 'spawnRing', position, { x: 0, y: 0 }, 0.7, '#ffcf5c')
+  spawn(particles, 'spawnRing', position, { x: 0, y: 0 }, 0.5, '#ffcf5c')
+  for (let i = 0; i < 8; i++) {
+    const angle = rangeFloat(rng, 0, Math.PI * 2)
+    const speed = rangeFloat(rng, 60, 160)
+    spawn(particles, 'death', position, fromAngle(angle, speed), rangeFloat(rng, 0.3, 0.6), '#ffcf5c')
+  }
+}
+
+export function spawnDashTrail(particles: Particle[], from: Vector2, to: Vector2): void {
+  const steps = 4
+  for (let i = 1; i <= steps; i++) {
+    const t = i / (steps + 1)
+    const pos = { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t }
+    spawn(particles, 'dashTrail', pos, { x: 0, y: 0 }, 0.22, '#5be3e3')
+  }
+}
+
 export function spawnSpawnRing(particles: Particle[], position: Vector2): void {
   spawn(particles, 'spawnRing', position, { x: 0, y: 0 }, 0.4, '#4f8cff')
 }
