@@ -1,0 +1,164 @@
+import type { GameEngine } from '../engine/GameEngine'
+import { ARENA_HEIGHT, ARENA_WIDTH } from '../engine/types'
+import { enemies as enemyDefs } from '../../content/enemies'
+
+const GRID_SIZE = 48
+
+export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  const { width, height } = ctx.canvas
+  ctx.save()
+  ctx.clearRect(0, 0, width, height)
+
+  const shakeX = engine.screenShake > 0 ? (Math.random() - 0.5) * engine.screenShake * 24 : 0
+  const shakeY = engine.screenShake > 0 ? (Math.random() - 0.5) * engine.screenShake * 24 : 0
+  ctx.translate(shakeX, shakeY)
+
+  drawBackground(ctx)
+  drawParticlesUnder(ctx, engine)
+  drawEnemies(ctx, engine)
+  drawProjectiles(ctx, engine)
+  drawPlayer(ctx, engine)
+  drawParticlesOver(ctx, engine)
+  drawVignette(ctx)
+
+  ctx.restore()
+}
+
+function drawBackground(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = '#0a0e16'
+  ctx.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT)
+
+  ctx.strokeStyle = 'rgba(60, 90, 140, 0.12)'
+  ctx.lineWidth = 1
+  for (let x = 0; x <= ARENA_WIDTH; x += GRID_SIZE) {
+    ctx.beginPath()
+    ctx.moveTo(x, 0)
+    ctx.lineTo(x, ARENA_HEIGHT)
+    ctx.stroke()
+  }
+  for (let y = 0; y <= ARENA_HEIGHT; y += GRID_SIZE) {
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(ARENA_WIDTH, y)
+    ctx.stroke()
+  }
+
+  ctx.strokeStyle = 'rgba(180, 40, 40, 0.35)'
+  ctx.lineWidth = 3
+  ctx.strokeRect(1.5, 1.5, ARENA_WIDTH - 3, ARENA_HEIGHT - 3)
+}
+
+function drawPlayer(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  const { position, rotation, radius } = engine.player
+  ctx.save()
+  ctx.translate(position.x, position.y)
+
+  ctx.beginPath()
+  ctx.arc(0, 0, radius + 6, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(60, 140, 255, 0.12)'
+  ctx.fill()
+
+  ctx.rotate(rotation)
+  ctx.beginPath()
+  ctx.arc(0, 0, radius, 0, Math.PI * 2)
+  ctx.fillStyle = engine.status === 'dead' ? '#3a3a3a' : '#3b7dd8'
+  ctx.fill()
+  ctx.strokeStyle = '#dbe9ff'
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.moveTo(radius - 2, 0)
+  ctx.lineTo(radius + 16, 0)
+  ctx.strokeStyle = '#dbe9ff'
+  ctx.lineWidth = 4
+  ctx.stroke()
+
+  ctx.restore()
+}
+
+function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  for (const enemy of engine.enemyList) {
+    if (!enemy.alive) continue
+    const def = enemyDefs[enemy.defId]
+    if (!def) continue
+
+    ctx.save()
+    ctx.translate(enemy.position.x, enemy.position.y)
+
+    ctx.beginPath()
+    ctx.arc(0, 0, def.radius, 0, Math.PI * 2)
+    ctx.fillStyle = enemy.hitFlash > 0 ? '#ffffff' : def.color
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 2
+    ctx.stroke()
+
+    const barWidth = def.radius * 2
+    const healthRatio = Math.max(0, enemy.health / enemy.maxHealth)
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'
+    ctx.fillRect(-barWidth / 2, -def.radius - 10, barWidth, 4)
+    ctx.fillStyle = healthRatio > 0.5 ? '#7fd858' : healthRatio > 0.25 ? '#e0b23a' : '#e0473a'
+    ctx.fillRect(-barWidth / 2, -def.radius - 10, barWidth * healthRatio, 4)
+
+    ctx.restore()
+  }
+}
+
+function drawProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  ctx.fillStyle = '#ffe9a8'
+  for (const p of engine.projectiles) {
+    ctx.beginPath()
+    ctx.arc(p.position.x, p.position.y, p.radius, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+function drawParticlesUnder(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  for (const p of engine.particles) {
+    if (p.kind !== 'impact' && p.kind !== 'death') continue
+    const alpha = 1 - p.age / p.ttl
+    ctx.globalAlpha = Math.max(0, alpha)
+    ctx.fillStyle = p.color
+    ctx.beginPath()
+    ctx.arc(p.position.x, p.position.y, p.kind === 'death' ? 4 : 2.5, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+}
+
+function drawParticlesOver(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  for (const p of engine.particles) {
+    if (p.kind === 'muzzle') {
+      const alpha = 1 - p.age / p.ttl
+      ctx.globalAlpha = Math.max(0, alpha)
+      ctx.fillStyle = p.color
+      ctx.beginPath()
+      ctx.arc(p.position.x, p.position.y, 8, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (p.kind === 'damageText') {
+      const alpha = 1 - p.age / p.ttl
+      ctx.globalAlpha = Math.max(0, alpha)
+      ctx.fillStyle = p.color
+      ctx.font = p.crit ? 'bold 18px sans-serif' : '14px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(p.text ?? '', p.position.x, p.position.y)
+    }
+  }
+  ctx.globalAlpha = 1
+}
+
+function drawVignette(ctx: CanvasRenderingContext2D): void {
+  const gradient = ctx.createRadialGradient(
+    ARENA_WIDTH / 2,
+    ARENA_HEIGHT / 2,
+    ARENA_HEIGHT / 2.2,
+    ARENA_WIDTH / 2,
+    ARENA_HEIGHT / 2,
+    ARENA_HEIGHT,
+  )
+  gradient.addColorStop(0, 'rgba(0,0,0,0)')
+  gradient.addColorStop(1, 'rgba(0,0,0,0.55)')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT)
+}

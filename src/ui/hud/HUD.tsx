@@ -1,0 +1,50 @@
+import { useHudStore } from '../../store/hudStore'
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+export function HUD() {
+  const snapshot = useHudStore((s) => s.snapshot)
+  const healthPct = Math.max(0, (snapshot.health / snapshot.maxHealth) * 100)
+  const armorPct = Math.max(0, (snapshot.armor / snapshot.maxArmor) * 100)
+  const xpPct = Math.max(0, Math.min(100, (snapshot.xp / snapshot.xpToNext) * 100))
+
+  return (
+    <div className="hud">
+      <div className="hud-top">
+        <div className="hud-wave">
+          WAVE {snapshot.waveNumber}
+          <span className="hud-enemies">{snapshot.enemiesAlive} ENEMIES LEFT</span>
+        </div>
+        <div className="hud-timer">SURVIVED {formatTime(snapshot.survivalTime)}</div>
+        <div className="hud-level">LV {snapshot.level} &middot; {snapshot.kills} KILLS</div>
+      </div>
+
+      <div className="hud-xp-bar">
+        <div className="hud-xp-fill" style={{ width: `${xpPct}%` }} />
+      </div>
+
+      <div className="hud-bottom">
+        <div className="hud-bars">
+          <div className="hud-bar hud-bar-health">
+            <div className="hud-bar-fill" style={{ width: `${healthPct}%` }} />
+            <span className="hud-bar-label">{Math.ceil(snapshot.health)} / {snapshot.maxHealth}</span>
+          </div>
+          <div className="hud-bar hud-bar-armor">
+            <div className="hud-bar-fill" style={{ width: `${armorPct}%` }} />
+            <span className="hud-bar-label">{Math.ceil(snapshot.armor)} / {snapshot.maxArmor}</span>
+          </div>
+        </div>
+        <div className="hud-weapon">
+          <span className="hud-weapon-name">{snapshot.weaponName}</span>
+          <span className="hud-weapon-ammo">
+            {snapshot.reloading ? 'RELOADING…' : `${snapshot.ammoInMag} / ${snapshot.magazineSize}`}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
