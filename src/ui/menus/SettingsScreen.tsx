@@ -27,7 +27,7 @@ function formatKeyCode(code: string): string {
   if (CODE_LABELS[code]) return CODE_LABELS[code]
   if (code.startsWith('Key')) return code.slice(3)
   if (code.startsWith('Digit')) return code.slice(5)
-  return code
+  return code.length === 1 ? code.toUpperCase() : code
 }
 
 export function SettingsScreen() {
