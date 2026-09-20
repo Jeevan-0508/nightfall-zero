@@ -14,6 +14,7 @@ export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   ctx.translate(shakeX, shakeY)
 
   drawBackground(ctx)
+  drawObstacles(ctx, engine)
   drawParticlesUnder(ctx, engine)
   drawEnemies(ctx, engine)
   drawProjectiles(ctx, engine)
@@ -24,6 +25,25 @@ export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   drawVignette(ctx)
 
   ctx.restore()
+}
+
+function drawObstacles(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  for (const obstacle of engine.map.obstacles) {
+    ctx.save()
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)'
+    ctx.shadowBlur = 8
+    ctx.fillStyle = '#2a2f3a'
+    ctx.beginPath()
+    ctx.arc(obstacle.position.x, obstacle.position.y, obstacle.radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+
+    ctx.strokeStyle = 'rgba(120, 130, 150, 0.4)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(obstacle.position.x, obstacle.position.y, obstacle.radius, 0, Math.PI * 2)
+    ctx.stroke()
+  }
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D): void {

@@ -194,6 +194,17 @@ export interface WaveDefinition {
   spawnIntervalMs: number
 }
 
+export interface Obstacle {
+  position: Vector2
+  radius: number
+}
+
+export interface MapDefinition {
+  id: string
+  name: string
+  obstacles: Obstacle[]
+}
+
 export interface WaveState {
   waveIndex: number
   spawnQueue: string[]
@@ -285,4 +296,5 @@ export interface HudSnapshot {
   kills: number
   abilities: AbilityHudInfo[]
   boss: BossHudInfo | null
+  mapName: string
 }

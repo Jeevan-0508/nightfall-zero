@@ -1,5 +1,6 @@
-import type { BossAttackId, Enemy, EnemyDefinition, Player } from '../engine/types'
+import type { BossAttackId, Enemy, EnemyDefinition, Obstacle, Player } from '../engine/types'
 import { normalize, subtract, scale, distance } from '../engine/vector'
+import { resolveObstacleCollisions } from '../collision/collision'
 
 const BOSS_ATTACK_ORDER: BossAttackId[] = ['slam', 'charge', 'barrage']
 
@@ -15,7 +16,13 @@ export interface BossUpdateResult {
  * during a 'charge' attack moves in the direction locked in when the telegraph
  * ended (a committed dash, not a homing missile).
  */
-export function updateBoss(enemy: Enemy, def: EnemyDefinition, player: Player, dt: number): BossUpdateResult {
+export function updateBoss(
+  enemy: Enemy,
+  def: EnemyDefinition,
+  player: Player,
+  dt: number,
+  obstacles: Obstacle[] = [],
+): BossUpdateResult {
   const result: BossUpdateResult = { resolveAttack: null }
   enemy.bossTimer -= dt
 
@@ -25,7 +32,8 @@ export function updateBoss(enemy: Enemy, def: EnemyDefinition, player: Player, d
     const minDistance = def.radius + player.radius + 20
     const moveDir = dist > minDistance ? normalize(toPlayer) : { x: 0, y: 0 }
     enemy.velocity = scale(moveDir, def.speed)
-    enemy.position = { x: enemy.position.x + enemy.velocity.x * dt, y: enemy.position.y + enemy.velocity.y * dt }
+    const moved = { x: enemy.position.x + enemy.velocity.x * dt, y: enemy.position.y + enemy.velocity.y * dt }
+    enemy.position = resolveObstacleCollisions(moved, def.radius, obstacles)
 
     if (enemy.bossTimer <= 0) {
       const lastIndex = enemy.bossAttackId ? BOSS_ATTACK_ORDER.indexOf(enemy.bossAttackId) : BOSS_ATTACK_ORDER.length - 1
@@ -56,7 +64,8 @@ export function updateBoss(enemy: Enemy, def: EnemyDefinition, player: Player, d
   if (enemy.bossAttackId === 'charge') {
     const dir = enemy.bossLockedDir
     enemy.velocity = scale(dir, def.speed * (def.bossChargeSpeedMultiplier ?? 3))
-    enemy.position = { x: enemy.position.x + enemy.velocity.x * dt, y: enemy.position.y + enemy.velocity.y * dt }
+    const moved = { x: enemy.position.x + enemy.velocity.x * dt, y: enemy.position.y + enemy.velocity.y * dt }
+    enemy.position = resolveObstacleCollisions(moved, def.radius, obstacles)
   }
 
   if (enemy.bossTimer <= 0) {

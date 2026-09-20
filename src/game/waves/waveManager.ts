@@ -1,8 +1,9 @@
 import type { Rng } from '../engine/rng'
 import { rangeFloat } from '../engine/rng'
 import { getWaveDefinition } from '../../content/waves'
-import { ARENA_HEIGHT, ARENA_WIDTH, type WaveState } from '../engine/types'
+import { ARENA_HEIGHT, ARENA_WIDTH, type Obstacle, type WaveState } from '../engine/types'
 import type { Vector2 } from '../engine/vector'
+import { circleIntersectsAnyObstacle } from '../collision/collision'
 
 export function createWaveState(): WaveState {
   return {
@@ -32,8 +33,9 @@ export function startWave(state: WaveState, waveNumber: number): void {
 }
 
 /** Picks a spawn point on the arena border, away from the player's immediate vicinity. */
-export function pickSpawnPosition(rng: Rng, playerPos: Vector2): Vector2 {
+export function pickSpawnPosition(rng: Rng, playerPos: Vector2, obstacles: Obstacle[] = []): Vector2 {
   const margin = 24
+  const spawnRadius = 16
   for (let attempt = 0; attempt < 8; attempt++) {
     const edge = Math.floor(rangeFloat(rng, 0, 4))
     let pos: Vector2
@@ -44,7 +46,7 @@ export function pickSpawnPosition(rng: Rng, playerPos: Vector2): Vector2 {
 
     const dx = pos.x - playerPos.x
     const dy = pos.y - playerPos.y
-    if (dx * dx + dy * dy > 160 * 160) return pos
+    if (dx * dx + dy * dy > 160 * 160 && !circleIntersectsAnyObstacle(pos, spawnRadius, obstacles)) return pos
   }
   return { x: margin, y: margin }
 }

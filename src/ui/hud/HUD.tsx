@@ -20,6 +20,7 @@ export function HUD() {
           <span className="hud-enemies">{snapshot.enemiesAlive} ENEMIES LEFT</span>
         </div>
         <div className="hud-timer">SURVIVED {formatTime(snapshot.survivalTime)}</div>
+        <div className="hud-map">{snapshot.mapName.toUpperCase()}</div>
         <div className="hud-level">LV {snapshot.level} &middot; {snapshot.kills} KILLS</div>
       </div>
 

@@ -5,6 +5,7 @@ import type {
   Enemy,
   EnemyDefinition,
   EnemyProjectile,
+  MapDefinition,
   EngineEvent,
   Grenade,
   EngineEventType,
@@ -20,6 +21,7 @@ import type {
 import { ARENA_HEIGHT, ARENA_WIDTH } from './types'
 import { weapons, weaponOrder, assaultRifle } from '../../content/weapons'
 import { enemies as enemyDefs, overlord } from '../../content/enemies'
+import { pickMap } from '../../content/maps'
 import { getWaveDefinition } from '../../content/waves'
 import { createEnemy, createEnemyProjectile, createGrenade, createPlayer } from '../entities/factories'
 import { pickUpgradeChoices, type UpgradeOption } from '../../content/upgrades'
@@ -32,7 +34,7 @@ import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBia
 import { applyDamage } from '../combat/damage'
 import { applyUpgradesToWeapon, tickWeaponTimers, tryFire } from '../combat/weapons'
 import { resolveExplosion } from '../combat/explosions'
-import { circlesIntersect } from '../collision/collision'
+import { circleIntersectsAnyObstacle, circlesIntersect, resolveObstacleCollisions } from '../collision/collision'
 import {
   createWaveState,
   notifyEnemyDeath,
@@ -85,6 +87,7 @@ export class GameEngine {
   recoilAmount = 0
   director: DirectorState = createDirectorState()
   pendingUpgradeChoices: UpgradeOption[] = []
+  map: MapDefinition
   private pendingLevelUps = 0
   private rng: Rng
   private nextWaveDelay = 0
@@ -92,6 +95,7 @@ export class GameEngine {
 
   constructor(seed: number = Date.now()) {
     this.rng = mulberry32(seed)
+    this.map = pickMap(this.rng)
     this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, weaponOrder, assaultRifle.id, abilityOrder)
     startWave(this.wave, 1)
     this.maybeSpawnBoss(1)
@@ -186,10 +190,11 @@ export class GameEngine {
     const speed =
       PLAYER_SPEED * this.player.upgrades.moveSpeedMultiplier * (this.isOverchargeActive() ? OVERCHARGE_SPEED_MULT : 1)
     this.player.velocity = { x: dx * speed, y: dy * speed }
-    this.player.position = {
+    const moved = {
       x: clamp(this.player.position.x + dx * speed * dt, this.player.radius, ARENA_WIDTH - this.player.radius),
       y: clamp(this.player.position.y + dy * speed * dt, this.player.radius, ARENA_HEIGHT - this.player.radius),
     }
+    this.player.position = resolveObstacleCollisions(moved, this.player.radius, this.map.obstacles)
 
     this.player.rotation = Math.atan2(input.aimY - this.player.position.y, input.aimX - this.player.position.x)
   }
@@ -271,7 +276,8 @@ export class GameEngine {
       p.distanceRemaining -= travel
       const outOfBounds =
         p.position.x < 0 || p.position.x > ARENA_WIDTH || p.position.y < 0 || p.position.y > ARENA_HEIGHT
-      if (p.distanceRemaining > 0 && !outOfBounds) alive.push(p)
+      const blocked = circleIntersectsAnyObstacle(p.position, p.radius, this.map.obstacles)
+      if (p.distanceRemaining > 0 && !outOfBounds && !blocked) alive.push(p)
     }
     this.projectiles = alive
   }
@@ -284,7 +290,8 @@ export class GameEngine {
       p.distanceRemaining -= travel
       const outOfBounds =
         p.position.x < 0 || p.position.x > ARENA_WIDTH || p.position.y < 0 || p.position.y > ARENA_HEIGHT
-      if (p.distanceRemaining > 0 && !outOfBounds) alive.push(p)
+      const blocked = circleIntersectsAnyObstacle(p.position, p.radius, this.map.obstacles)
+      if (p.distanceRemaining > 0 && !outOfBounds && !blocked) alive.push(p)
     }
     this.enemyProjectiles = alive
   }
@@ -328,7 +335,7 @@ export class GameEngine {
       if (result.spawnDefId) {
         const enemyDef = enemyDefs[result.spawnDefId]
         if (enemyDef) {
-          const pos = pickSpawnPosition(this.rng, this.player.position)
+          const pos = pickSpawnPosition(this.rng, this.player.position, this.map.obstacles)
           this.enemyList.push(createEnemy(enemyDef, pos))
           spawnSpawnRing(this.particles, pos)
           this.pushEvent('enemySpawn')
@@ -364,14 +371,14 @@ export class GameEngine {
       if (!def) continue
 
       if (def.behavior === 'boss') {
-        const bossResult = updateBoss(enemy, def, this.player, dt)
+        const bossResult = updateBoss(enemy, def, this.player, dt, this.map.obstacles)
         if (enemy.attackCooldown > 0) enemy.attackCooldown = Math.max(0, enemy.attackCooldown - dt)
         if (enemy.hitFlash > 0) enemy.hitFlash = Math.max(0, enemy.hitFlash - dt)
         this.resolveBossAttack(enemy, def, bossResult.resolveAttack)
         continue
       }
 
-      updateEnemyMovement(enemy, def, this.player, aliveEnemies, dt)
+      updateEnemyMovement(enemy, def, this.player, aliveEnemies, dt, this.map.obstacles)
 
       const shot = tryRangedAttack(enemy, def, this.player)
       if (shot) {
@@ -611,6 +618,7 @@ export class GameEngine {
       level: this.player.level,
       survivalTime: this.stats.survivalTime,
       kills: this.stats.kills,
+      mapName: this.map.name,
       abilities: abilityOrder.map((def) => {
         const abilityState = this.player.abilities[def.id]
         return {

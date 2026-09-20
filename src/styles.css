@@ -158,6 +158,13 @@ button {
   margin-left: auto;
 }
 
+.hud-map {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #6b7a94;
+  text-transform: uppercase;
+}
+
 .hud-xp-bar {
   position: absolute;
   top: 0;
