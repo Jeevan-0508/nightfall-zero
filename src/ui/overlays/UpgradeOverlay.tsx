@@ -13,7 +13,12 @@ export function UpgradeOverlay() {
         <p className="upgrade-subtitle">CHOOSE ONE</p>
         <div className="upgrade-options">
           {pendingUpgrades.map((option) => (
-            <button key={option.id} className="upgrade-option" onClick={() => chooseUpgrade(option.id)}>
+            <button
+              key={option.id}
+              className={`upgrade-option upgrade-option-${option.rarity}`}
+              onClick={() => chooseUpgrade(option.id)}
+            >
+              <span className="upgrade-option-rarity">{option.rarity}</span>
               <span className="upgrade-option-name">{option.name}</span>
               <span className="upgrade-option-desc">{option.description}</span>
             </button>

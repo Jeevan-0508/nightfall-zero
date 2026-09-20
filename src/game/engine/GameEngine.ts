@@ -23,7 +23,7 @@ import { weapons, weaponOrder, assaultRifle } from '../../content/weapons'
 import { enemies as enemyDefs, overlord, executioner } from '../../content/enemies'
 import { pickMap } from '../../content/maps'
 import { getWaveDefinition } from '../../content/waves'
-import { createEnemy, createEnemyProjectile, createGrenade, createPlayer } from '../entities/factories'
+import { createEnemy, createEnemyProjectile, createGrenade, createPlayer, rollElite, ELITE_DAMAGE_MULTIPLIER, ELITE_XP_MULTIPLIER } from '../entities/factories'
 import { pickUpgradeChoices, type UpgradeOption } from '../../content/upgrades'
 import { updateEnemyMovement } from '../ai/enemyAI'
 import { updateBoss } from '../ai/bossAI'
@@ -189,7 +189,7 @@ export class GameEngine {
       this.status = 'dead'
     } else if (this.pendingLevelUps > 0 && this.status === 'playing') {
       this.status = 'levelup'
-      this.pendingUpgradeChoices = pickUpgradeChoices(this.rng)
+      this.pendingUpgradeChoices = pickUpgradeChoices(this.rng, this.player.level)
       this.pushEvent('levelUp')
       spawnLevelUpBurst(this.particles, this.rng, this.player.position)
     }
@@ -346,7 +346,7 @@ export class GameEngine {
     for (const enemy of result.enemiesKilled) {
       const def = enemyDefs[enemy.defId]
       if (!def) continue
-      this.notifyKill(def)
+      this.notifyKill(def, enemy.elite)
     }
   }
 
@@ -360,7 +360,7 @@ export class GameEngine {
         const enemyDef = enemyDefs[result.spawnDefId]
         if (enemyDef) {
           const pos = pickSpawnPosition(this.rng, this.player.position, this.map.obstacles)
-          this.enemyList.push(this.spawnEnemy(enemyDef, pos))
+          this.enemyList.push(this.spawnEnemy(enemyDef, pos, rollElite(this.rng, this.wave.waveIndex)))
           spawnSpawnRing(this.particles, pos)
           this.pushEvent('enemySpawn')
         }
@@ -395,8 +395,8 @@ export class GameEngine {
   }
 
   /** Creates an enemy and applies the active mode's health multiplier. */
-  private spawnEnemy(def: EnemyDefinition, position: Vector2): Enemy {
-    const enemy = createEnemy(def, position)
+  private spawnEnemy(def: EnemyDefinition, position: Vector2, elite = false): Enemy {
+    const enemy = createEnemy(def, position, elite)
     enemy.health *= this.mode.enemyHealthMultiplier
     enemy.maxHealth *= this.mode.enemyHealthMultiplier
     return enemy
@@ -531,7 +531,7 @@ export class GameEngine {
         this.detonateEnemy(enemy, def)
       } else {
         spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
-        this.notifyKill(def)
+        this.notifyKill(def, enemy.elite)
       }
     }
   }
@@ -542,12 +542,12 @@ export class GameEngine {
     const radius = def.explosionRadius ?? 0
     if (radius > 0 && dist <= radius && def.explosionDamage) {
       const falloff = Math.max(0.3, 1 - dist / radius)
-      this.applyDamageToPlayer(Math.round(def.explosionDamage * falloff))
+      this.applyDamageToPlayer(Math.round(def.explosionDamage * falloff * (enemy.elite ? ELITE_DAMAGE_MULTIPLIER : 1)))
     }
     spawnExplosion(this.particles, enemy.position, radius)
     this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
     this.pushEvent('explosion')
-    this.notifyKill(def)
+    this.notifyKill(def, enemy.elite)
   }
 
   private applyExplosion(projectile: Projectile, directHitEnemyId: number): void {
@@ -567,7 +567,7 @@ export class GameEngine {
     for (const enemy of result.enemiesKilled) {
       const def = enemyDefs[enemy.defId]
       if (!def) continue
-      this.notifyKill(def)
+      this.notifyKill(def, enemy.elite)
     }
   }
 
@@ -584,19 +584,19 @@ export class GameEngine {
           continue
         }
         enemy.attackCooldown = def.contactCooldown
-        this.applyDamageToPlayer(def.contactDamage)
+        this.applyDamageToPlayer(enemy.elite ? def.contactDamage * ELITE_DAMAGE_MULTIPLIER : def.contactDamage)
         this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_PLAYER_HIT)
         this.pushEvent('playerHit')
       }
     }
   }
 
-  private notifyKill(def: EnemyDefinition): void {
+  private notifyKill(def: EnemyDefinition, elite = false): void {
     notifyEnemyDeath(this.wave)
     this.stats.kills += 1
     this.comboCount += 1
     this.comboTimer = COMBO_WINDOW
-    this.awardXp(def.xpValue)
+    this.awardXp(def.xpValue * (elite ? ELITE_XP_MULTIPLIER : 1))
     this.pushEvent('enemyDeath')
     if (def.behavior === 'boss') this.pushEvent('bossDefeated')
   }
@@ -630,7 +630,7 @@ export class GameEngine {
 
     this.pendingLevelUps = Math.max(0, this.pendingLevelUps - 1)
     if (this.pendingLevelUps > 0) {
-      this.pendingUpgradeChoices = pickUpgradeChoices(this.rng)
+      this.pendingUpgradeChoices = pickUpgradeChoices(this.rng, this.player.level)
     } else {
       this.pendingUpgradeChoices = []
       this.status = 'playing'

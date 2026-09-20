@@ -1125,6 +1125,50 @@ button {
   letter-spacing: 0.5px;
 }
 
+
+.upgrade-option-rarity {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.upgrade-option-common {
+  border-color: rgba(90, 220, 150, 0.25);
+}
+
+.upgrade-option-common .upgrade-option-rarity {
+  color: rgba(90, 220, 150, 0.85);
+}
+
+.upgrade-option-rare {
+  border-color: rgba(80, 170, 255, 0.5);
+  box-shadow: 0 0 14px rgba(80, 170, 255, 0.25);
+}
+
+.upgrade-option-rare .upgrade-option-rarity {
+  color: rgba(80, 170, 255, 0.9);
+}
+
+.upgrade-option-epic {
+  border-color: rgba(190, 100, 255, 0.55);
+  box-shadow: 0 0 16px rgba(190, 100, 255, 0.3);
+}
+
+.upgrade-option-epic .upgrade-option-rarity {
+  color: rgba(190, 100, 255, 0.95);
+}
+
+.upgrade-option-legendary {
+  border-color: rgba(255, 190, 60, 0.65);
+  box-shadow: 0 0 20px rgba(255, 190, 60, 0.4);
+}
+
+.upgrade-option-legendary .upgrade-option-rarity {
+  color: rgba(255, 190, 60, 1);
+}
+
 .upgrade-option-desc {
   font-size: 12px;
   color: #8aa4c8;

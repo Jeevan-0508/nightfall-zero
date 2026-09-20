@@ -77,6 +77,7 @@ export interface PlayerUpgrades {
   critChanceBonus: number
   moveSpeedMultiplier: number
   xpGainMultiplier: number
+  critDamageMultiplier: number
 }
 
 export interface AbilityDefinition {
@@ -132,6 +133,7 @@ export interface Enemy {
   bossAttackId: BossAttackId | null
   bossTimer: number
   bossLockedDir: Vector2
+  elite: boolean
 }
 
 export interface Projectile {

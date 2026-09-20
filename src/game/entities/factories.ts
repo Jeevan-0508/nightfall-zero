@@ -11,6 +11,21 @@ import type {
   WeaponState,
 } from '../engine/types'
 import type { Vector2 } from '../engine/vector'
+import type { Rng } from '../engine/rng'
+
+/** Elite spawns start appearing from wave 3, ramping to a 22% cap by wave 12+. Tougher and harder-hitting, worth more XP on the kill. */
+export const ELITE_HEALTH_MULTIPLIER = 1.5
+export const ELITE_DAMAGE_MULTIPLIER = 1.35
+export const ELITE_XP_MULTIPLIER = 1.8
+
+export function eliteChanceForWave(waveNumber: number): number {
+  if (waveNumber <= 2) return 0
+  return Math.min(0.22, 0.04 * (waveNumber - 2))
+}
+
+export function rollElite(rng: Rng, waveNumber: number): boolean {
+  return rng() < eliteChanceForWave(waveNumber)
+}
 
 let enemyIdCounter = 0
 
@@ -31,6 +46,7 @@ export function createDefaultUpgrades(): PlayerUpgrades {
     critChanceBonus: 0,
     moveSpeedMultiplier: 1,
     xpGainMultiplier: 1,
+    critDamageMultiplier: 1,
   }
 }
 
@@ -67,15 +83,16 @@ export function createPlayer(
   }
 }
 
-export function createEnemy(def: EnemyDefinition, position: Vector2): Enemy {
+export function createEnemy(def: EnemyDefinition, position: Vector2, elite = false): Enemy {
+  const healthScale = elite ? ELITE_HEALTH_MULTIPLIER : 1
   enemyIdCounter += 1
   return {
     id: enemyIdCounter,
     defId: def.id,
     position: { ...position },
     velocity: { x: 0, y: 0 },
-    health: def.health,
-    maxHealth: def.health,
+    health: def.health * healthScale,
+    maxHealth: def.health * healthScale,
     alive: true,
     hitFlash: 0,
     attackCooldown: 0,
@@ -86,6 +103,7 @@ export function createEnemy(def: EnemyDefinition, position: Vector2): Enemy {
     bossAttackId: null,
     bossTimer: def.behavior === 'boss' ? (def.bossAttackInterval ?? 3.5) : 0,
     bossLockedDir: { x: 0, y: 0 },
+    elite,
   }
 }
 

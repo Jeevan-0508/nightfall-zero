@@ -20,6 +20,7 @@ export function applyUpgradesToWeapon(base: WeaponDefinition, upgrades: PlayerUp
     fireRate: base.fireRate * upgrades.fireRateMultiplier,
     reloadTime: base.reloadTime / upgrades.reloadSpeedMultiplier,
     criticalChance: Math.min(0.95, base.criticalChance + upgrades.critChanceBonus),
+    criticalMultiplier: base.criticalMultiplier * upgrades.critDamageMultiplier,
   }
 }
 

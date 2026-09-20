@@ -674,6 +674,9 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
     if (def.behavior === 'boss') {
       drawBossAura(ctx, enemy.defId, def.radius, engine.stats.survivalTime)
     }
+    if (enemy.elite && def.behavior !== 'boss') {
+      drawEliteHalo(ctx, def.radius, engine.stats.survivalTime)
+    }
 
     ctx.rotate(facing)
     const bodyColor = enemy.hitFlash > 0 ? '#ffffff' : def.color
@@ -763,6 +766,16 @@ function drawEnemyBody(
   ctx.beginPath()
   ctx.arc(0, 0, radius, 0, Math.PI * 2)
   ctx.fill()
+  ctx.stroke()
+}
+
+/** Faster, tighter, gold-toned pulse ring than the boss aura, so an elite reads as "tougher regular" not "boss". */
+function drawEliteHalo(ctx: CanvasRenderingContext2D, radius: number, t: number): void {
+  const pulse = 0.5 + Math.sin(t * 5) * 0.5
+  ctx.beginPath()
+  ctx.arc(0, 0, radius + 6 + pulse * 2.5, 0, Math.PI * 2)
+  ctx.strokeStyle = `rgba(255, 205, 60, ${0.35 + pulse * 0.25})`
+  ctx.lineWidth = 2.5
   ctx.stroke()
 }
 
