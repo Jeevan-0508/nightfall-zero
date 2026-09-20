@@ -98,7 +98,7 @@ export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine, options:
   drawDynamicLighting(ctx, engine)
   drawGroundFog(ctx, engine)
   drawHitIndicators(ctx, engine, hitIndicators)
-  drawVignette(ctx)
+  drawVignette(ctx, engine)
 
   if (deathProgress > 0) {
     ctx.filter = 'none'
@@ -947,10 +947,10 @@ function drawParticlesOver(ctx: CanvasRenderingContext2D, engine: GameEngine): v
 
 function drawExplosion(
   ctx: CanvasRenderingContext2D,
-  p: { position: { x: number; y: number }; age: number; ttl: number; id: number },
+  p: { position: { x: number; y: number }; age: number; ttl: number; id: number; radius?: number },
 ): void {
   const progress = p.age / p.ttl
-  const radius = 10 + progress * 70
+  const radius = 10 + progress * (p.radius ?? 70)
   const gradient = ctx.createRadialGradient(p.position.x, p.position.y, 0, p.position.x, p.position.y, radius)
   gradient.addColorStop(0, 'rgba(255, 230, 160, 0.9)')
   gradient.addColorStop(0.5, 'rgba(255, 138, 61, 0.5)')
@@ -1042,7 +1042,7 @@ function drawDynamicLighting(ctx: CanvasRenderingContext2D, engine: GameEngine):
   ctx.restore()
 }
 
-function drawVignette(ctx: CanvasRenderingContext2D): void {
+function drawVignette(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   const gradient = ctx.createRadialGradient(
     ARENA_WIDTH / 2,
     ARENA_HEIGHT / 2,
@@ -1051,8 +1051,20 @@ function drawVignette(ctx: CanvasRenderingContext2D): void {
     ARENA_HEIGHT / 2,
     ARENA_HEIGHT,
   )
+  const healthRatio = engine.player.maxHealth > 0 ? engine.player.health / engine.player.maxHealth : 1
+  const bossAlive = engine.enemyList.some((e) => e.alive && enemyDefs[e.defId]?.behavior === 'boss')
+  let edgeColor = '0, 0, 0'
+  let edgeAlpha = 0.55
+  if (healthRatio < 0.3) {
+    const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 6) * 0.5
+    edgeColor = '190, 20, 20'
+    edgeAlpha = 0.4 + pulse * 0.3
+  } else if (bossAlive) {
+    edgeColor = '110, 20, 60'
+    edgeAlpha = 0.5
+  }
   gradient.addColorStop(0, 'rgba(0,0,0,0)')
-  gradient.addColorStop(1, 'rgba(0,0,0,0.55)')
+  gradient.addColorStop(1, `rgba(${edgeColor}, ${edgeAlpha})`)
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT)
 }

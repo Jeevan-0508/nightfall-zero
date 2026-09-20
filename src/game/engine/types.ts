@@ -188,6 +188,7 @@ export interface Particle {
   text?: string
   color: string
   crit?: boolean
+  radius?: number
 }
 
 export interface WaveDefinition {

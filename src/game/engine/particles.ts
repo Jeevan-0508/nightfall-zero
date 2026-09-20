@@ -15,9 +15,10 @@ function spawn(
   color: string,
   text?: string,
   crit?: boolean,
+  radius?: number,
 ): void {
   particleIdCounter += 1
-  particles.push({ id: particleIdCounter, kind, position: { ...position }, velocity, age: 0, ttl, color, text, crit })
+  particles.push({ id: particleIdCounter, kind, position: { ...position }, velocity, age: 0, ttl, color, text, crit, radius })
 }
 
 const WEAPON_MUZZLE_COLOR: Record<string, string> = {
@@ -86,8 +87,8 @@ export function spawnSpawnRing(particles: Particle[], position: Vector2): void {
   spawn(particles, 'spawnRing', position, { x: 0, y: 0 }, 0.4, '#4f8cff')
 }
 
-export function spawnExplosion(particles: Particle[], position: Vector2): void {
-  spawn(particles, 'explosion', position, { x: 0, y: 0 }, 0.35, '#ff8a3d')
+export function spawnExplosion(particles: Particle[], position: Vector2, radius?: number): void {
+  spawn(particles, 'explosion', position, { x: 0, y: 0 }, 0.35, '#ff8a3d', undefined, undefined, radius)
 }
 
 export function spawnSpit(particles: Particle[], position: Vector2, angle: number): void {

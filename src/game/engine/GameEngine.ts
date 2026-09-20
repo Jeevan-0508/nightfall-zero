@@ -437,7 +437,7 @@ export class GameEngine {
         this.applyDamageToPlayer(def.bossSlamDamage ?? 20)
         this.pushEvent('playerHit')
       }
-      spawnExplosion(this.particles, enemy.position)
+      spawnExplosion(this.particles, enemy.position, radius)
       this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
       this.pushEvent('bossSlam')
       return
@@ -544,7 +544,7 @@ export class GameEngine {
       const falloff = Math.max(0.3, 1 - dist / radius)
       this.applyDamageToPlayer(Math.round(def.explosionDamage * falloff))
     }
-    spawnExplosion(this.particles, enemy.position)
+    spawnExplosion(this.particles, enemy.position, radius)
     this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
     this.pushEvent('explosion')
     this.notifyKill(def)

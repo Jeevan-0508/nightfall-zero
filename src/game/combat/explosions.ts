@@ -24,7 +24,7 @@ export function resolveExplosion(
   rng: Rng,
   excludeId?: number,
 ): ExplosionResult {
-  spawnExplosion(particles, center)
+  spawnExplosion(particles, center, radius)
 
   const enemiesHit: Enemy[] = []
   const enemiesKilled: Enemy[] = []
