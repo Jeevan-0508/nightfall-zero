@@ -82,4 +82,27 @@ describe('GameEngine event stream', () => {
     }
     expect(sawReloadComplete).toBe(true)
   })
+
+  it('tracks a kill combo and resets it once the combo window expires', () => {
+    const engine = new GameEngine(15)
+    engine.player.position = { x: 100, y: 100 }
+    const first = createEnemy(walker, { x: 300, y: 100 })
+    first.health = 1
+    const second = createEnemy(walker, { x: 300, y: 100 })
+    second.health = 1
+    engine.enemyList.push(first, second)
+
+    const input = idleInput({ aimX: 300, aimY: 100, firing: true })
+    for (let i = 0; i < 60 && (first.alive || second.alive); i++) {
+      engine.update(1 / 60, input)
+      engine.drainEvents()
+    }
+
+    expect(first.alive).toBe(false)
+    expect(second.alive).toBe(false)
+    expect(engine.comboCount).toBe(2)
+
+    for (let i = 0; i < 200; i++) engine.update(1 / 60, idleInput())
+    expect(engine.comboCount).toBe(0)
+  })
 })

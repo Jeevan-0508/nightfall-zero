@@ -22,6 +22,7 @@ export function HUD() {
         <div className="hud-timer">SURVIVED {formatTime(snapshot.survivalTime)}</div>
         <div className="hud-map">{snapshot.mapName.toUpperCase()} &middot; {snapshot.modeName.toUpperCase()}</div>
         <div className="hud-level">LV {snapshot.level} &middot; {snapshot.kills} KILLS</div>
+        {snapshot.combo >= 2 && <div className="hud-combo">&times;{snapshot.combo} COMBO</div>}
       </div>
 
       <div className="hud-xp-bar">

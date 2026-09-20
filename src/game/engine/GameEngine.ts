@@ -67,6 +67,7 @@ const SCREEN_SHAKE_PLAYER_HIT = 0.18
 const SCREEN_SHAKE_EXPLOSION = 0.3
 const RECOIL_RECOVERY_RATE = 45
 const DASH_DISTANCE = 150
+const COMBO_WINDOW = 2.5
 const DASH_IFRAME_DURATION = 0.25
 const GRENADE_DAMAGE = 55
 const GRENADE_EXPLOSION_RADIUS = 110
@@ -87,6 +88,8 @@ export class GameEngine {
   stats: EngineStats = { kills: 0, shotsFired: 0, shotsHit: 0, survivalTime: 0, waveReached: 0 }
   status: GameStatus = 'playing'
   screenShake = 0
+  comboCount = 0
+  comboTimer = 0
   recoilAmount = 0
   director: DirectorState = createDirectorState()
   pendingUpgradeChoices: UpgradeOption[] = []
@@ -175,6 +178,10 @@ export class GameEngine {
 
     this.particles = updateParticles(this.particles, dt)
     if (this.screenShake > 0) this.screenShake = Math.max(0, this.screenShake - dt * 4)
+    if (this.comboTimer > 0) {
+      this.comboTimer = Math.max(0, this.comboTimer - dt)
+      if (this.comboTimer === 0) this.comboCount = 0
+    }
     if (this.recoilAmount > 0) this.recoilAmount = Math.max(0, this.recoilAmount - dt * RECOIL_RECOVERY_RATE)
 
     if (this.player.health <= 0) {
@@ -587,6 +594,8 @@ export class GameEngine {
   private notifyKill(def: EnemyDefinition): void {
     notifyEnemyDeath(this.wave)
     this.stats.kills += 1
+    this.comboCount += 1
+    this.comboTimer = COMBO_WINDOW
     this.awardXp(def.xpValue)
     this.pushEvent('enemyDeath')
     if (def.behavior === 'boss') this.pushEvent('bossDefeated')
@@ -652,6 +661,7 @@ export class GameEngine {
       kills: this.stats.kills,
       mapName: this.map.name,
       modeName: this.mode.name,
+      combo: this.comboCount,
       abilities: abilityOrder.map((def) => {
         const abilityState = this.player.abilities[def.id]
         return {

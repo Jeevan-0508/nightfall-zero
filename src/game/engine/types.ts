@@ -300,4 +300,5 @@ export interface HudSnapshot {
   boss: BossHudInfo | null
   mapName: string
   modeName: string
+  combo: number
 }
