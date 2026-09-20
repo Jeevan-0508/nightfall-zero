@@ -3,6 +3,7 @@ import { GameCanvas } from './ui/GameCanvas'
 import { HUD } from './ui/hud/HUD'
 import { MainMenu } from './ui/menus/MainMenu'
 import { GameOverOverlay } from './ui/overlays/GameOverOverlay'
+import { UpgradeOverlay } from './ui/overlays/UpgradeOverlay'
 
 export default function App() {
   const view = useGameStore((s) => s.view)
@@ -16,6 +17,7 @@ export default function App() {
         <GameCanvas key={runId} />
         <HUD />
         {view === 'gameover' && <GameOverOverlay />}
+        {view === 'playing' && <UpgradeOverlay />}
       </div>
     </div>
   )

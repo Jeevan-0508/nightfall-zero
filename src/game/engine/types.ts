@@ -3,7 +3,7 @@ import type { Vector2 } from './vector'
 export const ARENA_WIDTH = 960
 export const ARENA_HEIGHT = 600
 
-export type GameStatus = 'playing' | 'dead'
+export type GameStatus = 'playing' | 'dead' | 'levelup'
 
 export interface WeaponDefinition {
   id: string
@@ -59,6 +59,15 @@ export interface EnemyDefinition {
   cloakSpeedMultiplier?: number
 }
 
+export interface PlayerUpgrades {
+  damageMultiplier: number
+  fireRateMultiplier: number
+  reloadSpeedMultiplier: number
+  critChanceBonus: number
+  moveSpeedMultiplier: number
+  xpGainMultiplier: number
+}
+
 export interface Player {
   position: Vector2
   velocity: Vector2
@@ -73,6 +82,7 @@ export interface Player {
   xpToNext: number
   weapons: Record<string, WeaponState>
   equippedWeaponId: string
+  upgrades: PlayerUpgrades
   alive: boolean
 }
 
@@ -180,6 +190,8 @@ export type EngineEventType =
   | 'explosion'
   | 'weaponSwitch'
   | 'enemySpit'
+  | 'levelUp'
+  | 'upgradeChosen'
 
 export interface EngineEvent {
   type: EngineEventType

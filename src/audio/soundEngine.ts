@@ -156,6 +156,27 @@ export function playWeaponSwitch(): void {
   osc.stop(audioCtx.currentTime + 0.06)
 }
 
+export function playLevelUp(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const now = audioCtx.currentTime
+  ;[440, 660, 880].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator()
+    osc.type = 'triangle'
+    osc.frequency.value = freq
+    const gain = audioCtx.createGain()
+    const start = now + i * 0.08
+    gain.gain.setValueAtTime(0, start)
+    gain.gain.linearRampToValueAtTime(0.35, start + 0.015)
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.16)
+    osc.connect(gain)
+    gain.connect(masterGain!)
+    osc.start(start)
+    osc.stop(start + 0.17)
+  })
+}
+
 export function playEnemySpit(): void {
   const audioCtx = getContext()
   if (!audioCtx || !masterGain) return

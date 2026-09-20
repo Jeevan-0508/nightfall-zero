@@ -13,17 +13,19 @@ import type {
   Particle,
   Player,
   Projectile,
+  WeaponDefinition,
 } from './types'
 import { ARENA_HEIGHT, ARENA_WIDTH } from './types'
 import { weapons, weaponOrder, assaultRifle } from '../../content/weapons'
 import { enemies as enemyDefs } from '../../content/enemies'
 import { getWaveDefinition } from '../../content/waves'
 import { createEnemy, createPlayer } from '../entities/factories'
+import { pickUpgradeChoices, type UpgradeOption } from '../../content/upgrades'
 import { updateEnemyMovement } from '../ai/enemyAI'
 import { tryRangedAttack } from '../combat/rangedAttack'
 import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, type DirectorState } from '../director/director'
 import { applyDamage } from '../combat/damage'
-import { tickWeaponTimers, tryFire } from '../combat/weapons'
+import { applyUpgradesToWeapon, tickWeaponTimers, tryFire } from '../combat/weapons'
 import { resolveExplosion } from '../combat/explosions'
 import { circlesIntersect } from '../collision/collision'
 import {
@@ -66,6 +68,8 @@ export class GameEngine {
   screenShake = 0
   recoilAmount = 0
   director: DirectorState = createDirectorState()
+  pendingUpgradeChoices: UpgradeOption[] = []
+  private pendingLevelUps = 0
   private rng: Rng
   private nextWaveDelay = 0
   private events: EngineEvent[] = []
@@ -76,8 +80,9 @@ export class GameEngine {
     startWave(this.wave, 1)
   }
 
-  get weaponDef() {
-    return weapons[this.player.equippedWeaponId] ?? assaultRifle
+  get weaponDef(): WeaponDefinition {
+    const base = weapons[this.player.equippedWeaponId] ?? assaultRifle
+    return applyUpgradesToWeapon(base, this.player.upgrades)
   }
 
   private get weaponState() {
@@ -126,6 +131,10 @@ export class GameEngine {
     if (this.player.health <= 0) {
       this.player.alive = false
       this.status = 'dead'
+    } else if (this.pendingLevelUps > 0 && this.status === 'playing') {
+      this.status = 'levelup'
+      this.pendingUpgradeChoices = pickUpgradeChoices(this.rng)
+      this.pushEvent('levelUp')
     }
   }
 
@@ -143,10 +152,11 @@ export class GameEngine {
       dy /= len
     }
 
-    this.player.velocity = { x: dx * PLAYER_SPEED, y: dy * PLAYER_SPEED }
+    const speed = PLAYER_SPEED * this.player.upgrades.moveSpeedMultiplier
+    this.player.velocity = { x: dx * speed, y: dy * speed }
     this.player.position = {
-      x: clamp(this.player.position.x + dx * PLAYER_SPEED * dt, this.player.radius, ARENA_WIDTH - this.player.radius),
-      y: clamp(this.player.position.y + dy * PLAYER_SPEED * dt, this.player.radius, ARENA_HEIGHT - this.player.radius),
+      x: clamp(this.player.position.x + dx * speed * dt, this.player.radius, ARENA_WIDTH - this.player.radius),
+      y: clamp(this.player.position.y + dy * speed * dt, this.player.radius, ARENA_HEIGHT - this.player.radius),
     }
 
     this.player.rotation = Math.atan2(input.aimY - this.player.position.y, input.aimX - this.player.position.x)
@@ -399,11 +409,28 @@ export class GameEngine {
   }
 
   private awardXp(amount: number): void {
-    this.player.xp += amount
+    this.player.xp += amount * this.player.upgrades.xpGainMultiplier
     while (this.player.xp >= this.player.xpToNext) {
       this.player.xp -= this.player.xpToNext
       this.player.level += 1
       this.player.xpToNext = Math.round(this.player.xpToNext * 1.25)
+      this.pendingLevelUps += 1
+    }
+  }
+
+  /** Applies the chosen upgrade, then either serves the next queued level-up or resumes play. */
+  chooseUpgrade(id: string): void {
+    if (this.status !== 'levelup') return
+    const option = this.pendingUpgradeChoices.find((o) => o.id === id)
+    if (option) option.apply(this.player)
+    this.pushEvent('upgradeChosen')
+
+    this.pendingLevelUps = Math.max(0, this.pendingLevelUps - 1)
+    if (this.pendingLevelUps > 0) {
+      this.pendingUpgradeChoices = pickUpgradeChoices(this.rng)
+    } else {
+      this.pendingUpgradeChoices = []
+      this.status = 'playing'
     }
   }
 

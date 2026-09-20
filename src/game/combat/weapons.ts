@@ -1,6 +1,6 @@
 import type { Rng } from '../engine/rng'
 import { rangeFloat } from '../engine/rng'
-import type { Projectile, WeaponDefinition, WeaponState } from '../engine/types'
+import type { PlayerUpgrades, Projectile, WeaponDefinition, WeaponState } from '../engine/types'
 import type { Vector2 } from '../engine/vector'
 import { fromAngle } from '../engine/vector'
 import { rollWeaponDamage } from './damage'
@@ -10,6 +10,17 @@ let projectileIdCounter = 0
 export interface FireResult {
   fired: boolean
   projectiles: Projectile[]
+}
+
+/** Folds the player's permanent run upgrades into a weapon's base stats. */
+export function applyUpgradesToWeapon(base: WeaponDefinition, upgrades: PlayerUpgrades): WeaponDefinition {
+  return {
+    ...base,
+    damage: base.damage * upgrades.damageMultiplier,
+    fireRate: base.fireRate * upgrades.fireRateMultiplier,
+    reloadTime: base.reloadTime / upgrades.reloadSpeedMultiplier,
+    criticalChance: Math.min(0.95, base.criticalChance + upgrades.critChanceBonus),
+  }
 }
 
 /** Advances reload/cooldown timers. Call once per frame for the equipped weapon. */

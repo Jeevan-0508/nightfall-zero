@@ -11,6 +11,7 @@ import {
   playExplosion,
   playGunshot,
   playHit,
+  playLevelUp,
   playPlayerHit,
   playReloadComplete,
   playReloadStart,
@@ -32,6 +33,7 @@ export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const setSnapshot = useHudStore((s) => s.setSnapshot)
   const endRun = useGameStore((s) => s.endRun)
+  const setPendingUpgrades = useGameStore((s) => s.setPendingUpgrades)
 
   useEffect(() => {
     const canvasEl = canvasRef.current
@@ -107,6 +109,7 @@ export function GameCanvas() {
     let lastTime = performance.now()
     let rafId = 0
     let ended = false
+    let lastUpgradeChoices = engine.pendingUpgradeChoices
 
     function tick(now: number) {
       const dt = Math.min(0.05, (now - lastTime) / 1000)
@@ -116,6 +119,14 @@ export function GameCanvas() {
       input.switchTo = null
       draw(ctx!, engine)
       setSnapshot(engine.getHudSnapshot())
+
+      if (engine.pendingUpgradeChoices !== lastUpgradeChoices) {
+        lastUpgradeChoices = engine.pendingUpgradeChoices
+        setPendingUpgrades(
+          lastUpgradeChoices.length > 0 ? lastUpgradeChoices : null,
+          lastUpgradeChoices.length > 0 ? (id: string) => engine.chooseUpgrade(id) : null,
+        )
+      }
 
       for (const event of engine.drainEvents()) {
         switch (event.type) {
@@ -149,6 +160,9 @@ export function GameCanvas() {
           case 'enemySpit':
             playEnemySpit()
             break
+          case 'levelUp':
+            playLevelUp()
+            break
         }
       }
 
@@ -173,7 +187,7 @@ export function GameCanvas() {
       canvas.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [setSnapshot, endRun])
+  }, [setSnapshot, endRun, setPendingUpgrades])
 
   return (
     <canvas

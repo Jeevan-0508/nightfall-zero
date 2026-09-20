@@ -1,4 +1,4 @@
-import type { EnemyDefinition, Enemy, EnemyProjectile, Player, WeaponDefinition, WeaponState } from '../engine/types'
+import type { EnemyDefinition, Enemy, EnemyProjectile, Player, PlayerUpgrades, WeaponDefinition, WeaponState } from '../engine/types'
 import type { Vector2 } from '../engine/vector'
 
 let enemyIdCounter = 0
@@ -9,6 +9,17 @@ function freshWeaponState(def: WeaponDefinition): WeaponState {
     fireCooldown: 0,
     reloading: false,
     reloadRemaining: 0,
+  }
+}
+
+export function createDefaultUpgrades(): PlayerUpgrades {
+  return {
+    damageMultiplier: 1,
+    fireRateMultiplier: 1,
+    reloadSpeedMultiplier: 1,
+    critChanceBonus: 0,
+    moveSpeedMultiplier: 1,
+    xpGainMultiplier: 1,
   }
 }
 
@@ -34,6 +45,7 @@ export function createPlayer(
     xpToNext: 100,
     weapons: weaponStates,
     equippedWeaponId,
+    upgrades: createDefaultUpgrades(),
     alive: true,
   }
 }
