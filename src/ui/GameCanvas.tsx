@@ -6,12 +6,15 @@ import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
 import { weaponOrder } from '../content/weapons'
 import {
+  playDash,
   playEnemyDeath,
   playEnemySpit,
   playExplosion,
+  playGrenadeThrow,
   playGunshot,
   playHit,
   playLevelUp,
+  playOverchargeStart,
   playPlayerHit,
   playReloadComplete,
   playReloadStart,
@@ -27,6 +30,13 @@ const WEAPON_SWITCH_KEYS: Record<string, string> = {
   Digit6: weaponOrder[5].id,
   Digit7: weaponOrder[6].id,
   Digit8: weaponOrder[7].id,
+}
+
+const ABILITY_KEYS: Record<string, string> = {
+  ShiftLeft: 'dash',
+  ShiftRight: 'dash',
+  KeyQ: 'grenade',
+  KeyE: 'overcharge',
 }
 
 export function GameCanvas() {
@@ -52,6 +62,7 @@ export function GameCanvas() {
       aimY: ARENA_HEIGHT / 2,
       firing: false,
       switchTo: null,
+      abilityTrigger: null,
     }
 
     type MovementKey = 'up' | 'down' | 'left' | 'right'
@@ -74,7 +85,15 @@ export function GameCanvas() {
         return
       }
       const weaponId = WEAPON_SWITCH_KEYS[e.code]
-      if (weaponId) input.switchTo = weaponId
+      if (weaponId) {
+        input.switchTo = weaponId
+        return
+      }
+      const abilityId = ABILITY_KEYS[e.code]
+      if (abilityId) {
+        input.abilityTrigger = abilityId
+        e.preventDefault()
+      }
     }
     function onKeyUp(e: KeyboardEvent) {
       const key = keyMap[e.code]
@@ -117,6 +136,7 @@ export function GameCanvas() {
 
       engine.update(dt, input)
       input.switchTo = null
+      input.abilityTrigger = null
       draw(ctx!, engine)
       setSnapshot(engine.getHudSnapshot())
 
@@ -162,6 +182,15 @@ export function GameCanvas() {
             break
           case 'levelUp':
             playLevelUp()
+            break
+          case 'dashUsed':
+            playDash()
+            break
+          case 'grenadeThrown':
+            playGrenadeThrow()
+            break
+          case 'overchargeActivated':
+            playOverchargeStart()
             break
         }
       }

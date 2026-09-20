@@ -1,10 +1,11 @@
 import { mulberry32, type Rng } from './rng'
-import { clamp, distance } from './vector'
+import { clamp, distance, fromAngle } from './vector'
 import type {
   Enemy,
   EnemyDefinition,
   EnemyProjectile,
   EngineEvent,
+  Grenade,
   EngineEventType,
   EngineStats,
   GameStatus,
@@ -19,10 +20,12 @@ import { ARENA_HEIGHT, ARENA_WIDTH } from './types'
 import { weapons, weaponOrder, assaultRifle } from '../../content/weapons'
 import { enemies as enemyDefs } from '../../content/enemies'
 import { getWaveDefinition } from '../../content/waves'
-import { createEnemy, createPlayer } from '../entities/factories'
+import { createEnemy, createGrenade, createPlayer } from '../entities/factories'
 import { pickUpgradeChoices, type UpgradeOption } from '../../content/upgrades'
 import { updateEnemyMovement } from '../ai/enemyAI'
 import { tryRangedAttack } from '../combat/rangedAttack'
+import { abilityOrder } from '../../content/abilities'
+import { tickAbilityTimers, tryActivate } from '../combat/abilities'
 import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, type DirectorState } from '../director/director'
 import { applyDamage } from '../combat/damage'
 import { applyUpgradesToWeapon, tickWeaponTimers, tryFire } from '../combat/weapons'
@@ -55,12 +58,22 @@ const SCREEN_SHAKE_HIT = 0.08
 const SCREEN_SHAKE_PLAYER_HIT = 0.18
 const SCREEN_SHAKE_EXPLOSION = 0.3
 const RECOIL_RECOVERY_RATE = 45
+const DASH_DISTANCE = 150
+const DASH_IFRAME_DURATION = 0.25
+const GRENADE_DAMAGE = 55
+const GRENADE_EXPLOSION_RADIUS = 110
+const GRENADE_THROW_SPEED = 480
+const GRENADE_FUSE = 1.0
+const GRENADE_DRAG = 3
+const OVERCHARGE_FIRE_RATE_MULT = 1.4
+const OVERCHARGE_SPEED_MULT = 1.3
 
 export class GameEngine {
   player: Player
   enemyList: Enemy[] = []
   projectiles: Projectile[] = []
   enemyProjectiles: EnemyProjectile[] = []
+  grenades: Grenade[] = []
   particles: Particle[] = []
   wave: WaveState = createWaveState()
   stats: EngineStats = { kills: 0, shotsFired: 0, shotsHit: 0, survivalTime: 0, waveReached: 0 }
@@ -76,13 +89,21 @@ export class GameEngine {
 
   constructor(seed: number = Date.now()) {
     this.rng = mulberry32(seed)
-    this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, weaponOrder, assaultRifle.id)
+    this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, weaponOrder, assaultRifle.id, abilityOrder)
     startWave(this.wave, 1)
   }
 
   get weaponDef(): WeaponDefinition {
     const base = weapons[this.player.equippedWeaponId] ?? assaultRifle
-    return applyUpgradesToWeapon(base, this.player.upgrades)
+    const effective = applyUpgradesToWeapon(base, this.player.upgrades)
+    if (this.isOverchargeActive()) {
+      return { ...effective, fireRate: effective.fireRate * OVERCHARGE_FIRE_RATE_MULT }
+    }
+    return effective
+  }
+
+  private isOverchargeActive(): boolean {
+    return (this.player.abilities.overcharge?.activeRemaining ?? 0) > 0
   }
 
   private get weaponState() {
@@ -110,13 +131,19 @@ export class GameEngine {
     this.updatePlayerMovement(input, dt)
     this.updateWeaponSwitch(input)
     this.updateWeapon(input, dt)
+    this.updateAbilities(input, dt)
     this.updateProjectiles(dt)
     this.updateEnemyProjectiles(dt)
+    this.updateGrenades(dt)
     this.updateSpawning(dt)
     this.updateEnemies(dt)
     this.resolveProjectileHits()
     this.resolveContactDamage()
     this.resolveEnemyProjectileHits()
+
+    if (this.player.dashInvulnerableTimer > 0) {
+      this.player.dashInvulnerableTimer = Math.max(0, this.player.dashInvulnerableTimer - dt)
+    }
 
     updateDirector(this.director, dt, {
       damageTaken: Math.max(0, healthArmorBefore - (this.player.health + this.player.armor)),
@@ -152,7 +179,8 @@ export class GameEngine {
       dy /= len
     }
 
-    const speed = PLAYER_SPEED * this.player.upgrades.moveSpeedMultiplier
+    const speed =
+      PLAYER_SPEED * this.player.upgrades.moveSpeedMultiplier * (this.isOverchargeActive() ? OVERCHARGE_SPEED_MULT : 1)
     this.player.velocity = { x: dx * speed, y: dy * speed }
     this.player.position = {
       x: clamp(this.player.position.x + dx * speed * dt, this.player.radius, ARENA_WIDTH - this.player.radius),
@@ -194,6 +222,43 @@ export class GameEngine {
     }
   }
 
+  private updateAbilities(input: InputState, dt: number): void {
+    for (const def of abilityOrder) {
+      const state = this.player.abilities[def.id]
+      if (state) tickAbilityTimers(state, dt)
+    }
+
+    const triggered = input.abilityTrigger
+    if (!triggered) return
+
+    const def = abilityOrder.find((a) => a.id === triggered)
+    const state = def ? this.player.abilities[def.id] : undefined
+    if (!def || !state) return
+    if (!tryActivate(state, def)) return
+
+    if (def.id === 'dash') this.activateDash()
+    else if (def.id === 'grenade') this.activateGrenade()
+    else if (def.id === 'overcharge') this.pushEvent('overchargeActivated')
+  }
+
+  private activateDash(): void {
+    const dir = fromAngle(this.player.rotation)
+    this.player.position = {
+      x: clamp(this.player.position.x + dir.x * DASH_DISTANCE, this.player.radius, ARENA_WIDTH - this.player.radius),
+      y: clamp(this.player.position.y + dir.y * DASH_DISTANCE, this.player.radius, ARENA_HEIGHT - this.player.radius),
+    }
+    this.player.dashInvulnerableTimer = DASH_IFRAME_DURATION
+    this.pushEvent('dashUsed')
+  }
+
+  private activateGrenade(): void {
+    const dir = fromAngle(this.player.rotation, GRENADE_THROW_SPEED)
+    this.grenades.push(
+      createGrenade(this.player.position, dir, GRENADE_DAMAGE, GRENADE_EXPLOSION_RADIUS, GRENADE_FUSE),
+    )
+    this.pushEvent('grenadeThrown')
+  }
+
   private updateProjectiles(dt: number): void {
     const alive: Projectile[] = []
     for (const p of this.projectiles) {
@@ -218,6 +283,39 @@ export class GameEngine {
       if (p.distanceRemaining > 0 && !outOfBounds) alive.push(p)
     }
     this.enemyProjectiles = alive
+  }
+
+  private updateGrenades(dt: number): void {
+    const remaining: Grenade[] = []
+    for (const g of this.grenades) {
+      const decay = Math.exp(-GRENADE_DRAG * dt)
+      g.velocity = { x: g.velocity.x * decay, y: g.velocity.y * decay }
+      g.position = { x: g.position.x + g.velocity.x * dt, y: g.position.y + g.velocity.y * dt }
+      g.position.x = clamp(g.position.x, 0, ARENA_WIDTH)
+      g.position.y = clamp(g.position.y, 0, ARENA_HEIGHT)
+      g.fuseRemaining -= dt
+
+      if (g.fuseRemaining <= 0) {
+        this.detonateGrenade(g)
+      } else {
+        remaining.push(g)
+      }
+    }
+    this.grenades = remaining
+  }
+
+  private detonateGrenade(g: Grenade): void {
+    const result = resolveExplosion(g.position, g.explosionRadius, g.damage, this.enemyList, enemyDefs, this.particles, this.rng)
+    this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
+    this.pushEvent('explosion')
+    for (const enemy of result.enemiesKilled) {
+      const def = enemyDefs[enemy.defId]
+      if (!def) continue
+      notifyEnemyDeath(this.wave)
+      this.stats.kills += 1
+      this.awardXp(def.xpValue)
+      this.pushEvent('enemyDeath')
+    }
   }
 
   private updateSpawning(dt: number): void {
@@ -267,7 +365,7 @@ export class GameEngine {
   private resolveEnemyProjectileHits(): void {
     const remaining: EnemyProjectile[] = []
     for (const p of this.enemyProjectiles) {
-      if (circlesIntersect(p.position, p.radius, this.player.position, this.player.radius)) {
+      if (this.player.dashInvulnerableTimer <= 0 && circlesIntersect(p.position, p.radius, this.player.position, this.player.radius)) {
         this.applyDamageToPlayer(p.damage)
         spawnImpact(this.particles, this.rng, p.position, 3)
         this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_HIT)
@@ -381,6 +479,7 @@ export class GameEngine {
   }
 
   private resolveContactDamage(): void {
+    if (this.player.dashInvulnerableTimer > 0) return
     for (const enemy of this.enemyList) {
       if (!enemy.alive || enemy.attackCooldown > 0) continue
       const def = enemyDefs[enemy.defId]
@@ -455,6 +554,17 @@ export class GameEngine {
       level: this.player.level,
       survivalTime: this.stats.survivalTime,
       kills: this.stats.kills,
+      abilities: abilityOrder.map((def) => {
+        const abilityState = this.player.abilities[def.id]
+        return {
+          id: def.id,
+          name: def.name,
+          key: def.key,
+          cooldown: def.cooldown,
+          cooldownRemaining: abilityState?.cooldownRemaining ?? 0,
+          active: (abilityState?.activeRemaining ?? 0) > 0,
+        }
+      }),
     }
   }
 }

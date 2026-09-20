@@ -17,6 +17,7 @@ function idleInput(overrides: Partial<InputState> = {}): InputState {
     aimY: 0,
     firing: false,
     switchTo: null,
+    abilityTrigger: null,
     ...overrides,
   }
 }

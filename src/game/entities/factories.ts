@@ -1,4 +1,15 @@
-import type { EnemyDefinition, Enemy, EnemyProjectile, Player, PlayerUpgrades, WeaponDefinition, WeaponState } from '../engine/types'
+import type {
+  AbilityDefinition,
+  AbilityState,
+  Enemy,
+  EnemyDefinition,
+  EnemyProjectile,
+  Grenade,
+  Player,
+  PlayerUpgrades,
+  WeaponDefinition,
+  WeaponState,
+} from '../engine/types'
 import type { Vector2 } from '../engine/vector'
 
 let enemyIdCounter = 0
@@ -27,9 +38,13 @@ export function createPlayer(
   position: Vector2,
   availableWeapons: WeaponDefinition[],
   equippedWeaponId: string,
+  availableAbilities: AbilityDefinition[] = [],
 ): Player {
   const weaponStates: Record<string, WeaponState> = {}
   for (const def of availableWeapons) weaponStates[def.id] = freshWeaponState(def)
+
+  const abilityStates: Record<string, AbilityState> = {}
+  for (const def of availableAbilities) abilityStates[def.id] = { cooldownRemaining: 0, activeRemaining: 0 }
 
   return {
     position: { ...position },
@@ -46,6 +61,8 @@ export function createPlayer(
     weapons: weaponStates,
     equippedWeaponId,
     upgrades: createDefaultUpgrades(),
+    abilities: abilityStates,
+    dashInvulnerableTimer: 0,
     alive: true,
   }
 }
@@ -93,4 +110,28 @@ export function createEnemyProjectile(
 
 export function resetEnemyProjectileIdCounter(): void {
   enemyProjectileIdCounter = 0
+}
+
+let grenadeIdCounter = 0
+
+export function createGrenade(
+  position: Vector2,
+  velocity: Vector2,
+  damage: number,
+  explosionRadius: number,
+  fuse: number,
+): Grenade {
+  grenadeIdCounter += 1
+  return {
+    id: grenadeIdCounter,
+    position: { ...position },
+    velocity,
+    fuseRemaining: fuse,
+    explosionRadius,
+    damage,
+  }
+}
+
+export function resetGrenadeIdCounter(): void {
+  grenadeIdCounter = 0
 }

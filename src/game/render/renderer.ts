@@ -18,6 +18,7 @@ export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   drawEnemies(ctx, engine)
   drawProjectiles(ctx, engine)
   drawEnemyProjectiles(ctx, engine)
+  drawGrenades(ctx, engine)
   drawPlayer(ctx, engine)
   drawParticlesOver(ctx, engine)
   drawVignette(ctx)
@@ -144,6 +145,26 @@ function drawEnemyProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine)
     ctx.fill()
   }
   ctx.shadowBlur = 0
+}
+
+function drawGrenades(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  for (const g of engine.grenades) {
+    const urgency = Math.max(0, 1 - g.fuseRemaining)
+    const pulse = 0.5 + 0.5 * Math.sin(g.fuseRemaining * Math.PI * 14)
+
+    ctx.fillStyle = '#2a2f38'
+    ctx.beginPath()
+    ctx.arc(g.position.x, g.position.y, 7, 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.fillStyle = `rgba(255, ${Math.round(90 - urgency * 60)}, 40, ${0.4 + urgency * 0.5 * pulse})`
+    ctx.shadowColor = '#ff5a28'
+    ctx.shadowBlur = 6 + urgency * 10
+    ctx.beginPath()
+    ctx.arc(g.position.x, g.position.y, 3, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.shadowBlur = 0
+  }
 }
 
 function drawProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine): void {

@@ -232,3 +232,59 @@ export function playReloadComplete(): void {
     osc.stop(start + 0.08)
   })
 }
+
+export function playDash(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const noise = noiseBurst(audioCtx, 0.12)
+  const filter = audioCtx.createBiquadFilter()
+  filter.type = 'highpass'
+  filter.frequency.setValueAtTime(400, audioCtx.currentTime)
+  filter.frequency.exponentialRampToValueAtTime(2200, audioCtx.currentTime + 0.12)
+
+  const gain = audioCtx.createGain()
+  envelope(audioCtx, gain, 0.001, 0.12, 0.4)
+
+  noise.connect(filter)
+  filter.connect(gain)
+  gain.connect(masterGain)
+  noise.start()
+  noise.stop(audioCtx.currentTime + 0.13)
+}
+
+export function playGrenadeThrow(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const osc = audioCtx.createOscillator()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(180, audioCtx.currentTime)
+  osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.14)
+
+  const gain = audioCtx.createGain()
+  envelope(audioCtx, gain, 0.001, 0.14, 0.45)
+
+  osc.connect(gain)
+  gain.connect(masterGain)
+  osc.start()
+  osc.stop(audioCtx.currentTime + 0.15)
+}
+
+export function playOverchargeStart(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const osc = audioCtx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(220, audioCtx.currentTime)
+  osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.25)
+
+  const gain = audioCtx.createGain()
+  envelope(audioCtx, gain, 0.005, 0.25, 0.35)
+
+  osc.connect(gain)
+  gain.connect(masterGain)
+  osc.start()
+  osc.stop(audioCtx.currentTime + 0.26)
+}

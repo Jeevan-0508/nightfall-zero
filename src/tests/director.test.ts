@@ -11,7 +11,7 @@ import { brute } from '../content/enemies'
 import type { InputState } from '../game/engine/types'
 
 function idleInput(overrides: Partial<InputState> = {}): InputState {
-  return { up: false, down: false, left: false, right: false, aimX: 0, aimY: 0, firing: false, switchTo: null, ...overrides }
+  return { up: false, down: false, left: false, right: false, aimX: 0, aimY: 0, firing: false, switchTo: null, abilityTrigger: null, ...overrides }
 }
 
 describe('Adaptive Director signals', () => {

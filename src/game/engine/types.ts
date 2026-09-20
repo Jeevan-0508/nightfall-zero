@@ -68,6 +68,19 @@ export interface PlayerUpgrades {
   xpGainMultiplier: number
 }
 
+export interface AbilityDefinition {
+  id: string
+  name: string
+  key: string // display key hint, e.g. 'SHIFT'
+  cooldown: number // seconds
+  duration?: number // seconds; present for buff/channel abilities (Overcharge)
+}
+
+export interface AbilityState {
+  cooldownRemaining: number
+  activeRemaining: number // >0 while a duration-based effect is in effect
+}
+
 export interface Player {
   position: Vector2
   velocity: Vector2
@@ -83,6 +96,8 @@ export interface Player {
   weapons: Record<string, WeaponState>
   equippedWeaponId: string
   upgrades: PlayerUpgrades
+  abilities: Record<string, AbilityState>
+  dashInvulnerableTimer: number
   alive: boolean
 }
 
@@ -121,6 +136,16 @@ export interface EnemyProjectile {
   damage: number
   radius: number
   distanceRemaining: number
+}
+
+/** A player-thrown grenade (ability): rolls to a stop, then detonates on fuse expiry. */
+export interface Grenade {
+  id: number
+  position: Vector2
+  velocity: Vector2
+  fuseRemaining: number
+  explosionRadius: number
+  damage: number
 }
 
 export type ParticleKind =
@@ -168,6 +193,7 @@ export interface InputState {
   aimY: number
   firing: boolean
   switchTo: string | null
+  abilityTrigger: string | null
 }
 
 export interface EngineStats {
@@ -192,9 +218,21 @@ export type EngineEventType =
   | 'enemySpit'
   | 'levelUp'
   | 'upgradeChosen'
+  | 'dashUsed'
+  | 'grenadeThrown'
+  | 'overchargeActivated'
 
 export interface EngineEvent {
   type: EngineEventType
+}
+
+export interface AbilityHudInfo {
+  id: string
+  name: string
+  key: string
+  cooldown: number
+  cooldownRemaining: number
+  active: boolean
 }
 
 export interface HudSnapshot {
@@ -215,4 +253,5 @@ export interface HudSnapshot {
   level: number
   survivalTime: number
   kills: number
+  abilities: AbilityHudInfo[]
 }

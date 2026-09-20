@@ -6,7 +6,7 @@ import type { InputState } from '../game/engine/types'
 import { assaultRifle } from '../content/weapons'
 
 function idleInput(overrides: Partial<InputState> = {}): InputState {
-  return { up: false, down: false, left: false, right: false, aimX: 0, aimY: 0, firing: false, switchTo: null, ...overrides }
+  return { up: false, down: false, left: false, right: false, aimX: 0, aimY: 0, firing: false, switchTo: null, abilityTrigger: null, ...overrides }
 }
 
 describe('GameEngine event stream', () => {

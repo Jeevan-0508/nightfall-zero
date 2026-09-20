@@ -13,7 +13,7 @@ export function MainMenu() {
         <button className="menu-play" onClick={startRun}>
           PLAY
         </button>
-        <p className="menu-hint">WASD to move &middot; Mouse to aim &middot; Click to fire &middot; 1-8 to switch weapons</p>
+        <p className="menu-hint">WASD to move &middot; Mouse to aim &middot; Click to fire &middot; 1-8 to switch weapons &middot; SHIFT to dash &middot; Q for grenade &middot; E to overcharge</p>
         <p className="menu-footer">SAME NIGHT. A DIFFERENT YOU.</p>
       </div>
     </div>

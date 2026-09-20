@@ -28,14 +28,33 @@ export function HUD() {
       </div>
 
       <div className="hud-bottom">
-        <div className="hud-bars">
-          <div className="hud-bar hud-bar-health">
-            <div className="hud-bar-fill" style={{ width: `${healthPct}%` }} />
-            <span className="hud-bar-label">{Math.ceil(snapshot.health)} / {snapshot.maxHealth}</span>
+        <div className="hud-left">
+          <div className="hud-bars">
+            <div className="hud-bar hud-bar-health">
+              <div className="hud-bar-fill" style={{ width: `${healthPct}%` }} />
+              <span className="hud-bar-label">{Math.ceil(snapshot.health)} / {snapshot.maxHealth}</span>
+            </div>
+            <div className="hud-bar hud-bar-armor">
+              <div className="hud-bar-fill" style={{ width: `${armorPct}%` }} />
+              <span className="hud-bar-label">{Math.ceil(snapshot.armor)} / {snapshot.maxArmor}</span>
+            </div>
           </div>
-          <div className="hud-bar hud-bar-armor">
-            <div className="hud-bar-fill" style={{ width: `${armorPct}%` }} />
-            <span className="hud-bar-label">{Math.ceil(snapshot.armor)} / {snapshot.maxArmor}</span>
+          <div className="hud-abilities">
+            {snapshot.abilities.map((ability) => {
+              const fillPct = ability.cooldown > 0
+                ? Math.max(0, Math.min(100, (1 - ability.cooldownRemaining / ability.cooldown) * 100))
+                : 100
+              return (
+                <div
+                  key={ability.id}
+                  className={`hud-ability${ability.active ? ' hud-ability-active' : ''}`}
+                >
+                  <div className="hud-ability-fill" style={{ width: `${fillPct}%` }} />
+                  <span className="hud-ability-key">{ability.key}</span>
+                  <span className="hud-ability-name">{ability.name}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
         <div className="hud-weapon">
