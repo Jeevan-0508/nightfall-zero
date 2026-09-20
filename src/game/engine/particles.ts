@@ -41,6 +41,20 @@ export function spawnDeathBurst(particles: Particle[], rng: Rng, position: Vecto
   }
 }
 
+export function spawnShellCasing(particles: Particle[], position: Vector2, firingAngle: number): void {
+  const ejectAngle = firingAngle + Math.PI / 2 + (Math.random() - 0.5) * 0.4
+  const speed = 60 + Math.random() * 40
+  spawn(particles, 'shell', position, fromAngle(ejectAngle, speed), 0.5, '#c9a227')
+}
+
+export function spawnHitMarker(particles: Particle[], position: Vector2, crit: boolean): void {
+  spawn(particles, 'hitmarker', position, { x: 0, y: 0 }, crit ? 0.22 : 0.14, crit ? '#ff5252' : '#f2f2f2', undefined, crit)
+}
+
+export function spawnSpawnRing(particles: Particle[], position: Vector2): void {
+  spawn(particles, 'spawnRing', position, { x: 0, y: 0 }, 0.4, '#4f8cff')
+}
+
 export function spawnDamageText(particles: Particle[], position: Vector2, amount: number, crit: boolean): void {
   spawn(
     particles,
@@ -60,7 +74,7 @@ export function updateParticles(particles: Particle[], dt: number): Particle[] {
     p.age += dt
     if (p.age >= p.ttl) continue
     p.position = { x: p.position.x + p.velocity.x * dt, y: p.position.y + p.velocity.y * dt }
-    if (p.kind === 'impact' || p.kind === 'death') {
+    if (p.kind === 'impact' || p.kind === 'death' || p.kind === 'shell') {
       p.velocity = { x: p.velocity.x * 0.9, y: p.velocity.y * 0.9 }
     }
     alive.push(p)

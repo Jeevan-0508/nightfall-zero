@@ -2,6 +2,8 @@ import { mulberry32, type Rng } from './rng'
 import { clamp } from './vector'
 import type {
   Enemy,
+  EngineEvent,
+  EngineEventType,
   EngineStats,
   GameStatus,
   HudSnapshot,
@@ -29,8 +31,11 @@ import {
 import {
   spawnDamageText,
   spawnDeathBurst,
+  spawnHitMarker,
   spawnImpact,
   spawnMuzzleFlash,
+  spawnShellCasing,
+  spawnSpawnRing,
   updateParticles,
 } from './particles'
 import type { WaveState } from './types'
@@ -39,6 +44,8 @@ const PLAYER_SPEED = 220
 const WAVE_CLEAR_DELAY = 2.2
 const SCREEN_SHAKE_HIT = 0.08
 const SCREEN_SHAKE_PLAYER_HIT = 0.18
+const RECOIL_KICK = 5
+const RECOIL_RECOVERY_RATE = 45
 
 export class GameEngine {
   player: Player
@@ -49,8 +56,10 @@ export class GameEngine {
   stats: EngineStats = { kills: 0, shotsFired: 0, shotsHit: 0, survivalTime: 0, waveReached: 0 }
   status: GameStatus = 'playing'
   screenShake = 0
+  recoilAmount = 0
   private rng: Rng
   private nextWaveDelay = 0
+  private events: EngineEvent[] = []
 
   constructor(seed: number = Date.now()) {
     this.rng = mulberry32(seed)
@@ -58,8 +67,19 @@ export class GameEngine {
     startWave(this.wave, 1)
   }
 
-  private get weaponDef() {
+  get weaponDef() {
     return weapons[this.player.weapon.defId] ?? assaultRifle
+  }
+
+  /** Returns and clears queued gameplay events (for the audio/UI layer to react to). */
+  drainEvents(): EngineEvent[] {
+    const drained = this.events
+    this.events = []
+    return drained
+  }
+
+  private pushEvent(type: EngineEventType): void {
+    this.events.push({ type })
   }
 
   update(dt: number, input: InputState): void {
@@ -75,6 +95,7 @@ export class GameEngine {
     this.resolveContactDamage()
     this.particles = updateParticles(this.particles, dt)
     if (this.screenShake > 0) this.screenShake = Math.max(0, this.screenShake - dt * 4)
+    if (this.recoilAmount > 0) this.recoilAmount = Math.max(0, this.recoilAmount - dt * RECOIL_RECOVERY_RATE)
 
     if (this.player.health <= 0) {
       this.player.alive = false
@@ -106,14 +127,22 @@ export class GameEngine {
   }
 
   private updateWeapon(input: InputState, dt: number): void {
+    const wasReloading = this.player.weapon.reloading
     tickWeaponTimers(this.player, this.weaponDef, dt)
+    if (wasReloading && !this.player.weapon.reloading) this.pushEvent('reloadComplete')
+
     if (input.firing) {
+      const reloadingBeforeFire = this.player.weapon.reloading
       const result = tryFire(this.player, this.weaponDef, this.rng)
       if (result.fired && result.projectile) {
         this.projectiles.push(result.projectile)
         this.stats.shotsFired += 1
+        this.recoilAmount = RECOIL_KICK
         spawnMuzzleFlash(this.particles, this.player.position, this.player.rotation)
+        spawnShellCasing(this.particles, this.player.position, this.player.rotation)
+        this.pushEvent('shotFired')
       }
+      if (!reloadingBeforeFire && this.player.weapon.reloading) this.pushEvent('reloadStart')
     }
   }
 
@@ -139,6 +168,8 @@ export class GameEngine {
         if (enemyDef) {
           const pos = pickSpawnPosition(this.rng, this.player.position)
           this.enemyList.push(createEnemy(enemyDef, pos))
+          spawnSpawnRing(this.particles, pos)
+          this.pushEvent('enemySpawn')
         }
       }
       if (result.waveCompleted) {
@@ -175,14 +206,17 @@ export class GameEngine {
           enemy.hitFlash = 0.12
           const died = applyDamage(enemy, projectile.damage)
           spawnImpact(this.particles, this.rng, enemy.position)
+          spawnHitMarker(this.particles, enemy.position, projectile.isCrit)
           spawnDamageText(this.particles, enemy.position, projectile.damage, projectile.isCrit)
           this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_HIT)
+          this.pushEvent(projectile.isCrit ? 'critHit' : 'hit')
           if (died) {
             enemy.alive = false
             spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
             notifyEnemyDeath(this.wave)
             this.stats.kills += 1
             this.awardXp(def.xpValue)
+            this.pushEvent('enemyDeath')
           }
           consumed = true
           break
@@ -205,6 +239,7 @@ export class GameEngine {
         enemy.attackCooldown = def.contactCooldown
         this.applyDamageToPlayer(def.contactDamage)
         this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_PLAYER_HIT)
+        this.pushEvent('playerHit')
       }
     }
   }

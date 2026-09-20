@@ -77,7 +77,7 @@ export interface Projectile {
   distanceRemaining: number
 }
 
-export type ParticleKind = 'muzzle' | 'impact' | 'damageText' | 'death'
+export type ParticleKind = 'muzzle' | 'impact' | 'damageText' | 'death' | 'shell' | 'hitmarker' | 'spawnRing'
 
 export interface Particle {
   id: number
@@ -123,15 +123,18 @@ export interface EngineStats {
   waveReached: number
 }
 
-export interface EngineSnapshot {
-  status: GameStatus
-  player: Player
-  enemies: Enemy[]
-  projectiles: Projectile[]
-  particles: Particle[]
-  wave: WaveState
-  stats: EngineStats
-  screenShake: number
+export type EngineEventType =
+  | 'shotFired'
+  | 'hit'
+  | 'critHit'
+  | 'enemyDeath'
+  | 'reloadStart'
+  | 'reloadComplete'
+  | 'playerHit'
+  | 'enemySpawn'
+
+export interface EngineEvent {
+  type: EngineEventType
 }
 
 export interface HudSnapshot {

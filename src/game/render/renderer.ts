@@ -50,14 +50,29 @@ function drawBackground(ctx: CanvasRenderingContext2D): void {
 
 function drawPlayer(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   const { position, rotation, radius } = engine.player
+  const recoilOffset = engine.recoilAmount
+  const drawX = position.x - Math.cos(rotation) * recoilOffset
+  const drawY = position.y - Math.sin(rotation) * recoilOffset
+
   ctx.save()
   ctx.translate(position.x, position.y)
-
   ctx.beginPath()
   ctx.arc(0, 0, radius + 6, 0, Math.PI * 2)
   ctx.fillStyle = 'rgba(60, 140, 255, 0.12)'
   ctx.fill()
 
+  if (engine.player.weapon.reloading) {
+    const progress = 1 - engine.player.weapon.reloadRemaining / engine.weaponDef.reloadTime
+    ctx.beginPath()
+    ctx.arc(0, 0, radius + 10, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2)
+    ctx.strokeStyle = '#4f8cff'
+    ctx.lineWidth = 3
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  ctx.save()
+  ctx.translate(drawX, drawY)
   ctx.rotate(rotation)
   ctx.beginPath()
   ctx.arc(0, 0, radius, 0, Math.PI * 2)
@@ -116,33 +131,58 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine): voi
 
 function drawParticlesUnder(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   for (const p of engine.particles) {
-    if (p.kind !== 'impact' && p.kind !== 'death') continue
     const alpha = 1 - p.age / p.ttl
     ctx.globalAlpha = Math.max(0, alpha)
-    ctx.fillStyle = p.color
-    ctx.beginPath()
-    ctx.arc(p.position.x, p.position.y, p.kind === 'death' ? 4 : 2.5, 0, Math.PI * 2)
-    ctx.fill()
+
+    if (p.kind === 'impact' || p.kind === 'death') {
+      ctx.fillStyle = p.color
+      ctx.beginPath()
+      ctx.arc(p.position.x, p.position.y, p.kind === 'death' ? 4 : 2.5, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (p.kind === 'shell') {
+      ctx.save()
+      ctx.translate(p.position.x, p.position.y)
+      ctx.rotate(Math.atan2(p.velocity.y, p.velocity.x))
+      ctx.fillStyle = p.color
+      ctx.fillRect(-3, -1, 6, 2)
+      ctx.restore()
+    }
   }
   ctx.globalAlpha = 1
 }
 
 function drawParticlesOver(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   for (const p of engine.particles) {
+    const alpha = 1 - p.age / p.ttl
+    ctx.globalAlpha = Math.max(0, alpha)
+
     if (p.kind === 'muzzle') {
-      const alpha = 1 - p.age / p.ttl
-      ctx.globalAlpha = Math.max(0, alpha)
       ctx.fillStyle = p.color
       ctx.beginPath()
       ctx.arc(p.position.x, p.position.y, 8, 0, Math.PI * 2)
       ctx.fill()
     } else if (p.kind === 'damageText') {
-      const alpha = 1 - p.age / p.ttl
-      ctx.globalAlpha = Math.max(0, alpha)
       ctx.fillStyle = p.color
       ctx.font = p.crit ? 'bold 18px sans-serif' : '14px sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText(p.text ?? '', p.position.x, p.position.y)
+    } else if (p.kind === 'hitmarker') {
+      const size = p.crit ? 10 : 6
+      ctx.strokeStyle = p.color
+      ctx.lineWidth = p.crit ? 3 : 2
+      ctx.beginPath()
+      ctx.moveTo(p.position.x - size, p.position.y - size)
+      ctx.lineTo(p.position.x + size, p.position.y + size)
+      ctx.moveTo(p.position.x + size, p.position.y - size)
+      ctx.lineTo(p.position.x - size, p.position.y + size)
+      ctx.stroke()
+    } else if (p.kind === 'spawnRing') {
+      const radius = 8 + (p.age / p.ttl) * 24
+      ctx.strokeStyle = p.color
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(p.position.x, p.position.y, radius, 0, Math.PI * 2)
+      ctx.stroke()
     }
   }
   ctx.globalAlpha = 1

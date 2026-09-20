@@ -4,6 +4,14 @@ import { ARENA_HEIGHT, ARENA_WIDTH, type InputState } from '../game/engine/types
 import { draw } from '../game/render/renderer'
 import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
+import {
+  playEnemyDeath,
+  playGunshot,
+  playHit,
+  playPlayerHit,
+  playReloadComplete,
+  playReloadStart,
+} from '../audio/soundEngine'
 
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -80,6 +88,32 @@ export function GameCanvas() {
       engine.update(dt, input)
       draw(ctx!, engine)
       setSnapshot(engine.getHudSnapshot())
+
+      for (const event of engine.drainEvents()) {
+        switch (event.type) {
+          case 'shotFired':
+            playGunshot()
+            break
+          case 'hit':
+            playHit(false)
+            break
+          case 'critHit':
+            playHit(true)
+            break
+          case 'enemyDeath':
+            playEnemyDeath()
+            break
+          case 'playerHit':
+            playPlayerHit()
+            break
+          case 'reloadStart':
+            playReloadStart()
+            break
+          case 'reloadComplete':
+            playReloadComplete()
+            break
+        }
+      }
 
       if (engine.status === 'dead' && !ended) {
         ended = true
