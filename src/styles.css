@@ -698,6 +698,74 @@ button {
   border-color: rgba(140, 160, 200, 0.6);
 }
 
+/* ---------- Pause ---------- */
+
+.pause-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 2, 4, 0.85);
+  animation: fade-in 0.2s ease;
+}
+
+.pause-panel {
+  text-align: center;
+  padding: 40px 56px;
+  border: 1px solid rgba(120, 160, 220, 0.2);
+  background: rgba(10, 12, 18, 0.85);
+  border-radius: 8px;
+  min-width: 260px;
+}
+
+.pause-title {
+  font-size: 30px;
+  letter-spacing: 4px;
+  margin: 0 0 24px;
+}
+
+.pause-hint {
+  margin-top: 14px;
+  color: #5c7290;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+/* ---------- Settings ---------- */
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 28px 0;
+  padding: 16px;
+  background: rgba(20, 26, 36, 0.7);
+  border: 1px solid rgba(120, 160, 220, 0.2);
+  border-radius: 6px;
+}
+
+.settings-label {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #8aa4c8;
+  flex-shrink: 0;
+}
+
+.settings-slider {
+  flex: 1;
+  accent-color: #b8302f;
+}
+
+.settings-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #eef3fb;
+  width: 44px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 /* ---------- Upgrade / Level Up ---------- */
 
 .upgrade-overlay {

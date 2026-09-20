@@ -88,6 +88,12 @@ export function GameCanvas() {
     }
 
     function onKeyDown(e: KeyboardEvent) {
+      if (e.code === 'Escape') {
+        const store = useGameStore.getState()
+        if (!store.pendingUpgrades) store.setPaused(!store.paused)
+        e.preventDefault()
+        return
+      }
       const key = keyMap[e.code]
       if (key) {
         input[key] = true
@@ -143,6 +149,12 @@ export function GameCanvas() {
     function tick(now: number) {
       const dt = Math.min(0.05, (now - lastTime) / 1000)
       lastTime = now
+
+      if (useGameStore.getState().paused) {
+        draw(ctx!, engine)
+        rafId = requestAnimationFrame(tick)
+        return
+      }
 
       engine.update(dt, input)
       input.switchTo = null

@@ -4,6 +4,8 @@ import { HUD } from './ui/hud/HUD'
 import { MainMenu } from './ui/menus/MainMenu'
 import { LoadoutScreen } from './ui/menus/LoadoutScreen'
 import { ArmoryScreen } from './ui/menus/ArmoryScreen'
+import { SettingsScreen } from './ui/menus/SettingsScreen'
+import { PauseOverlay } from './ui/overlays/PauseOverlay'
 import { GameOverOverlay } from './ui/overlays/GameOverOverlay'
 import { UpgradeOverlay } from './ui/overlays/UpgradeOverlay'
 
@@ -14,6 +16,7 @@ export default function App() {
   if (view === 'menu') return <MainMenu />
   if (view === 'loadout') return <LoadoutScreen />
   if (view === 'armory') return <ArmoryScreen />
+  if (view === 'settings') return <SettingsScreen />
 
   return (
     <div className="game-root">
@@ -22,6 +25,7 @@ export default function App() {
         <HUD />
         {view === 'gameover' && <GameOverOverlay />}
         {view === 'playing' && <UpgradeOverlay />}
+        {view === 'playing' && <PauseOverlay />}
       </div>
     </div>
   )

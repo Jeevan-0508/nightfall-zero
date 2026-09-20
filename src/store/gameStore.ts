@@ -3,7 +3,7 @@ import type { UpgradeOption } from '../content/upgrades'
 import { assaultRifle } from '../content/weapons'
 import { defaultGameMode } from '../content/gameModes'
 
-export type GameView = 'menu' | 'loadout' | 'armory' | 'playing' | 'gameover'
+export type GameView = 'menu' | 'loadout' | 'armory' | 'settings' | 'playing' | 'gameover'
 
 export interface RunResult {
   survivalTime: number
@@ -18,10 +18,13 @@ interface GameStore {
   pendingUpgrades: UpgradeOption[] | null
   selectedWeaponId: string
   selectedModeId: string
+  paused: boolean
   goToLoadout: () => void
   goToArmory: () => void
+  goToSettings: () => void
   selectWeapon: (weaponId: string) => void
   selectMode: (modeId: string) => void
+  setPaused: (paused: boolean) => void
   startRun: () => void
   endRun: (result: RunResult) => void
   returnToMenu: () => void
@@ -38,13 +41,16 @@ export const useGameStore = create<GameStore>((set) => ({
   pendingUpgrades: null,
   selectedWeaponId: assaultRifle.id,
   selectedModeId: defaultGameMode.id,
+  paused: false,
   goToLoadout: () => set({ view: 'loadout' }),
   goToArmory: () => set({ view: 'armory' }),
+  goToSettings: () => set({ view: 'settings' }),
   selectWeapon: (weaponId) => set({ selectedWeaponId: weaponId }),
   selectMode: (modeId) => set({ selectedModeId: modeId }),
-  startRun: () => set((s) => ({ view: 'playing', runId: s.runId + 1, lastResult: null, pendingUpgrades: null })),
-  endRun: (result) => set({ view: 'gameover', lastResult: result, pendingUpgrades: null }),
-  returnToMenu: () => set({ view: 'menu' }),
+  setPaused: (paused) => set({ paused }),
+  startRun: () => set((s) => ({ view: 'playing', runId: s.runId + 1, lastResult: null, pendingUpgrades: null, paused: false })),
+  endRun: (result) => set({ view: 'gameover', lastResult: result, pendingUpgrades: null, paused: false }),
+  returnToMenu: () => set({ view: 'menu', paused: false }),
   setPendingUpgrades: (choices, onChoose) => {
     onChooseUpgrade = onChoose
     set({ pendingUpgrades: choices })

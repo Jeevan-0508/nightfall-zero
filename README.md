@@ -60,6 +60,7 @@ and the same inputs, and it replays byte-for-byte, which is also how every mecha
 | **SHIFT** | Dash (brief invulnerability) |
 | **Q** | Throw grenade |
 | **E** | Overcharge (temporary fire-rate + speed boost) |
+| **ESC** | Pause / resume |
 
 Pick a starting weapon on the loadout screen, then survive. Every wave adds more enemies; every five waves, a
 boss. Level up mid-run to choose from randomized stat upgrades. Every run also earns scrap, spendable in the
@@ -111,6 +112,13 @@ A lightweight difficulty director watches damage taken, kills per second, and re
 spawn pacing and enemy mix in response, the same idea as Left 4 Dead's AI Director scaled down to one metric feed.
 It cannot spawn a boss early or skip a wave; it only leans the existing wave definitions toward more or less
 pressure.
+
+## 🗂 Menus
+
+Main menu branches three ways: **PLAY** into loadout and mode select, **ARMORY** to spend scrap, and
+**SETTINGS** for a single master-volume slider, saved to `localStorage` and applied immediately, live, to the
+Web Audio master gain. **ESC** during a run opens a pause menu (resume, restart, or quit to the main menu)
+without disturbing anything the level-up overlay is already showing.
 
 ## 🎯 Game Modes
 
