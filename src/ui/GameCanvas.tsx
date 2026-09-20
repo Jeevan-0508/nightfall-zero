@@ -5,6 +5,7 @@ import { draw } from '../game/render/renderer'
 import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
 import { useMetaStore } from '../store/metaStore'
+import { getGameMode } from '../content/gameModes'
 import { weaponOrder } from '../content/weapons'
 import {
   playBossBarrage,
@@ -51,6 +52,7 @@ export function GameCanvas() {
   const endRun = useGameStore((s) => s.endRun)
   const setPendingUpgrades = useGameStore((s) => s.setPendingUpgrades)
   const selectedWeaponId = useGameStore((s) => s.selectedWeaponId)
+  const selectedModeId = useGameStore((s) => s.selectedModeId)
   const upgradeRanks = useMetaStore((s) => s.upgradeRanks)
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export function GameCanvas() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const engine = new GameEngine(undefined, selectedWeaponId, upgradeRanks)
+    const engine = new GameEngine(undefined, selectedWeaponId, upgradeRanks, selectedModeId)
     const input: InputState = {
       up: false,
       down: false,
@@ -226,7 +228,7 @@ export function GameCanvas() {
           waveReached: Math.max(engine.stats.waveReached, engine.wave.waveIndex),
         }
         endRun(result)
-        useMetaStore.getState().recordRunResult(result)
+        useMetaStore.getState().recordRunResult(result, getGameMode(selectedModeId).scrapMultiplier)
       }
 
       rafId = requestAnimationFrame(tick)
@@ -241,7 +243,7 @@ export function GameCanvas() {
       canvas.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [setSnapshot, endRun, setPendingUpgrades, selectedWeaponId, upgradeRanks])
+  }, [setSnapshot, endRun, setPendingUpgrades, selectedWeaponId, upgradeRanks, selectedModeId])
 
   return (
     <canvas

@@ -7,11 +7,15 @@ export interface RunResult {
   waveReached: number
 }
 
-/** Scrap payout for a finished run, boosted by the Scavenger's Network rank. */
-export function calculateScrapEarned(result: RunResult, ranks: Record<string, number>): number {
+/** Scrap payout for a finished run, boosted by the Scavenger's Network rank and the run's game-mode multiplier. */
+export function calculateScrapEarned(
+  result: RunResult,
+  ranks: Record<string, number>,
+  modeScrapMultiplier = 1,
+): number {
   const scavengerRank = ranks['scavenger'] ?? 0
   const base = result.kills * 2 + Math.floor(result.survivalTime) + result.waveReached * 10
-  return Math.floor(base * (1 + scavengerRank * 0.1))
+  return Math.floor(base * (1 + scavengerRank * 0.1) * modeScrapMultiplier)
 }
 
 /** Scrap cost to raise a meta-upgrade from currentRank to currentRank + 1. */

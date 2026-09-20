@@ -172,6 +172,58 @@ button {
   text-align: center;
 }
 
+.loadout-subtitle {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #8aa4c8;
+  margin: 0 0 12px;
+  font-weight: 700;
+}
+
+.loadout-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  background: rgba(20, 26, 36, 0.7);
+  border: 1px solid rgba(120, 160, 220, 0.2);
+  border-radius: 6px;
+  color: #eef3fb;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.mode-card:hover {
+  border-color: rgba(120, 160, 220, 0.6);
+  background: rgba(30, 40, 54, 0.85);
+}
+
+.mode-card-selected {
+  border-color: #d64545;
+  background: rgba(60, 24, 24, 0.6);
+}
+
+.mode-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.mode-card-desc {
+  font-size: 10px;
+  color: #8aa4c8;
+  text-align: center;
+  line-height: 1.4;
+}
+
 .loadout-back {
   display: block;
   width: 100%;

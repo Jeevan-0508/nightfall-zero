@@ -22,6 +22,7 @@ const initialSnapshot: HudSnapshot = {
   abilities: [],
   boss: null,
   mapName: 'Crossroads',
+  modeName: 'Standard',
 }
 
 interface HudStore {

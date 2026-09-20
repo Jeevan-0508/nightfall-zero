@@ -1,9 +1,12 @@
 import { useGameStore } from '../../store/gameStore'
 import { weaponOrder } from '../../content/weapons'
+import { gameModes } from '../../content/gameModes'
 
 export function LoadoutScreen() {
   const selectedWeaponId = useGameStore((s) => s.selectedWeaponId)
   const selectWeapon = useGameStore((s) => s.selectWeapon)
+  const selectedModeId = useGameStore((s) => s.selectedModeId)
+  const selectMode = useGameStore((s) => s.selectMode)
   const startRun = useGameStore((s) => s.startRun)
   const returnToMenu = useGameStore((s) => s.returnToMenu)
 
@@ -27,6 +30,21 @@ export function LoadoutScreen() {
             </button>
           ))}
         </div>
+
+        <h2 className="loadout-subtitle">GAME MODE</h2>
+        <div className="loadout-modes">
+          {gameModes.map((mode) => (
+            <button
+              key={mode.id}
+              className={mode.id === selectedModeId ? 'mode-card mode-card-selected' : 'mode-card'}
+              onClick={() => selectMode(mode.id)}
+            >
+              <span className="mode-card-name">{mode.name}</span>
+              <span className="mode-card-desc">{mode.description}</span>
+            </button>
+          ))}
+        </div>
+
         <button className="menu-play" onClick={startRun}>
           START RUN
         </button>

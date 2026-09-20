@@ -10,7 +10,7 @@ interface MetaStore {
   bestSurvivalTime: number
   bestWaveReached: number
   upgradeRanks: Record<string, number>
-  recordRunResult: (result: RunResult) => void
+  recordRunResult: (result: RunResult, modeScrapMultiplier?: number) => void
   purchaseUpgrade: (id: string) => void
 }
 
@@ -23,8 +23,8 @@ export const useMetaStore = create<MetaStore>()(
       bestSurvivalTime: 0,
       bestWaveReached: 0,
       upgradeRanks: {},
-      recordRunResult: (result) => {
-        const earned = calculateScrapEarned(result, get().upgradeRanks)
+      recordRunResult: (result, modeScrapMultiplier = 1) => {
+        const earned = calculateScrapEarned(result, get().upgradeRanks, modeScrapMultiplier)
         set((s) => ({
           scrap: s.scrap + earned,
           totalRuns: s.totalRuns + 1,

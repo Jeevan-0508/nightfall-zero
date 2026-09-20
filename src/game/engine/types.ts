@@ -297,4 +297,5 @@ export interface HudSnapshot {
   abilities: AbilityHudInfo[]
   boss: BossHudInfo | null
   mapName: string
+  modeName: string
 }

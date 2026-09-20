@@ -1,5 +1,5 @@
 import { mulberry32, type Rng } from './rng'
-import { clamp, distance, fromAngle } from './vector'
+import { clamp, distance, fromAngle, type Vector2 } from './vector'
 import type {
   BossAttackId,
   Enemy,
@@ -32,6 +32,7 @@ import { abilityOrder } from '../../content/abilities'
 import { tickAbilityTimers, tryActivate } from '../combat/abilities'
 import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, type DirectorState } from '../director/director'
 import { applyMetaUpgrades } from '../meta/metaProgression'
+import { getGameMode, defaultGameMode, type GameModeDefinition } from '../../content/gameModes'
 import { applyDamage } from '../combat/damage'
 import { applyUpgradesToWeapon, tickWeaponTimers, tryFire } from '../combat/weapons'
 import { resolveExplosion } from '../combat/explosions'
@@ -72,7 +73,6 @@ const GRENADE_FUSE = 1.0
 const GRENADE_DRAG = 3
 const OVERCHARGE_FIRE_RATE_MULT = 1.4
 const OVERCHARGE_SPEED_MULT = 1.3
-const BOSS_WAVE_INTERVAL = 5
 
 export class GameEngine {
   player: Player
@@ -89,6 +89,7 @@ export class GameEngine {
   director: DirectorState = createDirectorState()
   pendingUpgradeChoices: UpgradeOption[] = []
   map: MapDefinition
+  mode: GameModeDefinition
   private pendingLevelUps = 0
   private rng: Rng
   private nextWaveDelay = 0
@@ -98,9 +99,11 @@ export class GameEngine {
     seed: number = Date.now(),
     startingWeaponId: string = assaultRifle.id,
     metaUpgradeRanks: Record<string, number> = {},
+    gameModeId: string = defaultGameMode.id,
   ) {
     this.rng = mulberry32(seed)
     this.map = pickMap(this.rng)
+    this.mode = getGameMode(gameModeId)
     const weaponId = weapons[startingWeaponId] ? startingWeaponId : assaultRifle.id
     this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, weaponOrder, weaponId, abilityOrder)
     applyMetaUpgrades(this.player, metaUpgradeRanks)
@@ -338,12 +341,12 @@ export class GameEngine {
     if (this.wave.waveInProgress) {
       const modifier = getSpawnModifier(this.director)
       applyDirectorBias(this.wave.spawnQueue, modifier.toughEnemyBias)
-      const result = updateWaveManager(this.wave, dt, def.spawnIntervalMs * modifier.intervalMultiplier)
+      const result = updateWaveManager(this.wave, dt, def.spawnIntervalMs * modifier.intervalMultiplier * this.mode.spawnIntervalMultiplier)
       if (result.spawnDefId) {
         const enemyDef = enemyDefs[result.spawnDefId]
         if (enemyDef) {
           const pos = pickSpawnPosition(this.rng, this.player.position, this.map.obstacles)
-          this.enemyList.push(createEnemy(enemyDef, pos))
+          this.enemyList.push(this.spawnEnemy(enemyDef, pos))
           spawnSpawnRing(this.particles, pos)
           this.pushEvent('enemySpawn')
         }
@@ -362,13 +365,21 @@ export class GameEngine {
     }
   }
 
-  /** Every BOSS_WAVE_INTERVAL waves, a boss spawns alongside the normal roster and counts toward wave-clear. */
+  /** Every mode.bossWaveInterval waves, a boss spawns alongside the normal roster and counts toward wave-clear. */
   private maybeSpawnBoss(waveIndex: number): void {
-    if (waveIndex % BOSS_WAVE_INTERVAL !== 0) return
-    const boss = createEnemy(overlord, { x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.2 })
+    if (waveIndex % this.mode.bossWaveInterval !== 0) return
+    const boss = this.spawnEnemy(overlord, { x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.2 })
     this.enemyList.push(boss)
     this.wave.enemiesAlive += 1
     this.pushEvent('bossSpawn')
+  }
+
+  /** Creates an enemy and applies the active mode's health multiplier. */
+  private spawnEnemy(def: EnemyDefinition, position: Vector2): Enemy {
+    const enemy = createEnemy(def, position)
+    enemy.health *= this.mode.enemyHealthMultiplier
+    enemy.maxHealth *= this.mode.enemyHealthMultiplier
+    return enemy
   }
 
   private updateEnemies(dt: number): void {
@@ -568,7 +579,8 @@ export class GameEngine {
     if (def.behavior === 'boss') this.pushEvent('bossDefeated')
   }
 
-  private applyDamageToPlayer(amount: number): void {
+  private applyDamageToPlayer(rawAmount: number): void {
+    let amount = rawAmount * this.mode.enemyDamageMultiplier
     if (this.player.armor > 0) {
       const absorbed = Math.min(this.player.armor, amount)
       this.player.armor -= absorbed
@@ -626,6 +638,7 @@ export class GameEngine {
       survivalTime: this.stats.survivalTime,
       kills: this.stats.kills,
       mapName: this.map.name,
+      modeName: this.mode.name,
       abilities: abilityOrder.map((def) => {
         const abilityState = this.player.abilities[def.id]
         return {
