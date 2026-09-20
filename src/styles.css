@@ -40,6 +40,36 @@ button {
     0 0 0 1px rgba(91, 227, 227, 0.18),
     0 0 40px rgba(91, 227, 227, 0.06),
     0 20px 60px rgba(0, 0, 0, 0.55);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.menu-panel::-webkit-scrollbar,
+.loadout-panel::-webkit-scrollbar,
+.armory-panel::-webkit-scrollbar,
+.gameover-panel::-webkit-scrollbar,
+.pause-panel::-webkit-scrollbar,
+.upgrade-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.menu-panel::-webkit-scrollbar-thumb,
+.loadout-panel::-webkit-scrollbar-thumb,
+.armory-panel::-webkit-scrollbar-thumb,
+.gameover-panel::-webkit-scrollbar-thumb,
+.pause-panel::-webkit-scrollbar-thumb,
+.upgrade-panel::-webkit-scrollbar-thumb {
+  background: rgba(91, 227, 227, 0.25);
+  border-radius: 4px;
+}
+
+.menu-panel::-webkit-scrollbar-track,
+.loadout-panel::-webkit-scrollbar-track,
+.armory-panel::-webkit-scrollbar-track,
+.gameover-panel::-webkit-scrollbar-track,
+.pause-panel::-webkit-scrollbar-track,
+.upgrade-panel::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .menu-panel::before,
