@@ -11,6 +11,7 @@ const initialSnapshot: HudSnapshot = {
   magazineSize: 30,
   reloading: false,
   weaponName: 'Assault Rifle',
+  weaponIndex: 3,
   waveNumber: 1,
   enemiesAlive: 0,
   xp: 0,

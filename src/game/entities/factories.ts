@@ -1,9 +1,25 @@
-import type { EnemyDefinition, Enemy, Player, WeaponDefinition } from '../engine/types'
+import type { EnemyDefinition, Enemy, Player, WeaponDefinition, WeaponState } from '../engine/types'
 import type { Vector2 } from '../engine/vector'
 
 let enemyIdCounter = 0
 
-export function createPlayer(position: Vector2, weapon: WeaponDefinition): Player {
+function freshWeaponState(def: WeaponDefinition): WeaponState {
+  return {
+    ammoInMag: def.magazineSize,
+    fireCooldown: 0,
+    reloading: false,
+    reloadRemaining: 0,
+  }
+}
+
+export function createPlayer(
+  position: Vector2,
+  availableWeapons: WeaponDefinition[],
+  equippedWeaponId: string,
+): Player {
+  const weaponStates: Record<string, WeaponState> = {}
+  for (const def of availableWeapons) weaponStates[def.id] = freshWeaponState(def)
+
   return {
     position: { ...position },
     velocity: { x: 0, y: 0 },
@@ -16,13 +32,8 @@ export function createPlayer(position: Vector2, weapon: WeaponDefinition): Playe
     xp: 0,
     level: 1,
     xpToNext: 100,
-    weapon: {
-      defId: weapon.id,
-      ammoInMag: weapon.magazineSize,
-      fireCooldown: 0,
-      reloading: false,
-      reloadRemaining: 0,
-    },
+    weapons: weaponStates,
+    equippedWeaponId,
     alive: true,
   }
 }

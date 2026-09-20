@@ -118,6 +118,44 @@ export function playPlayerHit(): void {
   osc.stop(audioCtx.currentTime + 0.16)
 }
 
+export function playExplosion(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const noise = noiseBurst(audioCtx, 0.3)
+  const filter = audioCtx.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.setValueAtTime(900, audioCtx.currentTime)
+  filter.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.3)
+
+  const gain = audioCtx.createGain()
+  envelope(audioCtx, gain, 0.002, 0.3, 1)
+
+  noise.connect(filter)
+  filter.connect(gain)
+  gain.connect(masterGain)
+  noise.start()
+  noise.stop(audioCtx.currentTime + 0.31)
+}
+
+export function playWeaponSwitch(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const osc = audioCtx.createOscillator()
+  osc.type = 'triangle'
+  osc.frequency.setValueAtTime(500, audioCtx.currentTime)
+  osc.frequency.exponentialRampToValueAtTime(750, audioCtx.currentTime + 0.05)
+
+  const gain = audioCtx.createGain()
+  envelope(audioCtx, gain, 0.001, 0.05, 0.2)
+
+  osc.connect(gain)
+  gain.connect(masterGain)
+  osc.start()
+  osc.stop(audioCtx.currentTime + 0.06)
+}
+
 export function playReloadStart(): void {
   const audioCtx = getContext()
   if (!audioCtx || !masterGain) return

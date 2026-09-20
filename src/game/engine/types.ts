@@ -17,10 +17,13 @@ export interface WeaponDefinition {
   range: number // px
   criticalChance: number // 0..1
   criticalMultiplier: number
+  recoil: number // visual kick strength
+  pellets: number // projectiles fired per trigger pull (shotgun-style spread)
+  pierceCount?: number // extra enemies a single projectile can pass through
+  explosionRadius?: number // area-damage radius on impact (rockets)
 }
 
 export interface WeaponState {
-  defId: string
   ammoInMag: number
   fireCooldown: number
   reloading: boolean
@@ -51,7 +54,8 @@ export interface Player {
   xp: number
   level: number
   xpToNext: number
-  weapon: WeaponState
+  weapons: Record<string, WeaponState>
+  equippedWeaponId: string
   alive: boolean
 }
 
@@ -75,9 +79,19 @@ export interface Projectile {
   isCrit: boolean
   radius: number
   distanceRemaining: number
+  pierceRemaining: number
+  explosionRadius?: number
 }
 
-export type ParticleKind = 'muzzle' | 'impact' | 'damageText' | 'death' | 'shell' | 'hitmarker' | 'spawnRing'
+export type ParticleKind =
+  | 'muzzle'
+  | 'impact'
+  | 'damageText'
+  | 'death'
+  | 'shell'
+  | 'hitmarker'
+  | 'spawnRing'
+  | 'explosion'
 
 export interface Particle {
   id: number
@@ -113,6 +127,7 @@ export interface InputState {
   aimX: number
   aimY: number
   firing: boolean
+  switchTo: string | null
 }
 
 export interface EngineStats {
@@ -132,6 +147,8 @@ export type EngineEventType =
   | 'reloadComplete'
   | 'playerHit'
   | 'enemySpawn'
+  | 'explosion'
+  | 'weaponSwitch'
 
 export interface EngineEvent {
   type: EngineEventType
@@ -147,6 +164,7 @@ export interface HudSnapshot {
   magazineSize: number
   reloading: boolean
   weaponName: string
+  weaponIndex: number
   waveNumber: number
   enemiesAlive: number
   xp: number

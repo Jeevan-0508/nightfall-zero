@@ -4,14 +4,28 @@ import { ARENA_HEIGHT, ARENA_WIDTH, type InputState } from '../game/engine/types
 import { draw } from '../game/render/renderer'
 import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
+import { weaponOrder } from '../content/weapons'
 import {
   playEnemyDeath,
+  playExplosion,
   playGunshot,
   playHit,
   playPlayerHit,
   playReloadComplete,
   playReloadStart,
+  playWeaponSwitch,
 } from '../audio/soundEngine'
+
+const WEAPON_SWITCH_KEYS: Record<string, string> = {
+  Digit1: weaponOrder[0].id,
+  Digit2: weaponOrder[1].id,
+  Digit3: weaponOrder[2].id,
+  Digit4: weaponOrder[3].id,
+  Digit5: weaponOrder[4].id,
+  Digit6: weaponOrder[5].id,
+  Digit7: weaponOrder[6].id,
+  Digit8: weaponOrder[7].id,
+}
 
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -26,7 +40,16 @@ export function GameCanvas() {
     if (!ctx) return
 
     const engine = new GameEngine()
-    const input: InputState = { up: false, down: false, left: false, right: false, aimX: ARENA_WIDTH / 2, aimY: ARENA_HEIGHT / 2, firing: false }
+    const input: InputState = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      aimX: ARENA_WIDTH / 2,
+      aimY: ARENA_HEIGHT / 2,
+      firing: false,
+      switchTo: null,
+    }
 
     type MovementKey = 'up' | 'down' | 'left' | 'right'
     const keyMap: Record<string, MovementKey> = {
@@ -45,7 +68,10 @@ export function GameCanvas() {
       if (key) {
         input[key] = true
         e.preventDefault()
+        return
       }
+      const weaponId = WEAPON_SWITCH_KEYS[e.code]
+      if (weaponId) input.switchTo = weaponId
     }
     function onKeyUp(e: KeyboardEvent) {
       const key = keyMap[e.code]
@@ -86,6 +112,7 @@ export function GameCanvas() {
       lastTime = now
 
       engine.update(dt, input)
+      input.switchTo = null
       draw(ctx!, engine)
       setSnapshot(engine.getHudSnapshot())
 
@@ -111,6 +138,12 @@ export function GameCanvas() {
             break
           case 'reloadComplete':
             playReloadComplete()
+            break
+          case 'explosion':
+            playExplosion()
+            break
+          case 'weaponSwitch':
+            playWeaponSwitch()
             break
         }
       }

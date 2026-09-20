@@ -61,8 +61,9 @@ function drawPlayer(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   ctx.fillStyle = 'rgba(60, 140, 255, 0.12)'
   ctx.fill()
 
-  if (engine.player.weapon.reloading) {
-    const progress = 1 - engine.player.weapon.reloadRemaining / engine.weaponDef.reloadTime
+  const equippedState = engine.player.weapons[engine.player.equippedWeaponId]
+  if (equippedState.reloading) {
+    const progress = 1 - equippedState.reloadRemaining / engine.weaponDef.reloadTime
     ctx.beginPath()
     ctx.arc(0, 0, radius + 10, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2)
     ctx.strokeStyle = '#4f8cff'
@@ -183,6 +184,17 @@ function drawParticlesOver(ctx: CanvasRenderingContext2D, engine: GameEngine): v
       ctx.beginPath()
       ctx.arc(p.position.x, p.position.y, radius, 0, Math.PI * 2)
       ctx.stroke()
+    } else if (p.kind === 'explosion') {
+      const progress = p.age / p.ttl
+      const radius = 10 + progress * 70
+      const gradient = ctx.createRadialGradient(p.position.x, p.position.y, 0, p.position.x, p.position.y, radius)
+      gradient.addColorStop(0, 'rgba(255, 230, 160, 0.9)')
+      gradient.addColorStop(0.5, 'rgba(255, 138, 61, 0.5)')
+      gradient.addColorStop(1, 'rgba(255, 138, 61, 0)')
+      ctx.fillStyle = gradient
+      ctx.beginPath()
+      ctx.arc(p.position.x, p.position.y, radius, 0, Math.PI * 2)
+      ctx.fill()
     }
   }
   ctx.globalAlpha = 1

@@ -2,6 +2,7 @@ import { mulberry32, type Rng } from './rng'
 import { clamp } from './vector'
 import type {
   Enemy,
+  EnemyDefinition,
   EngineEvent,
   EngineEventType,
   EngineStats,
@@ -13,13 +14,14 @@ import type {
   Projectile,
 } from './types'
 import { ARENA_HEIGHT, ARENA_WIDTH } from './types'
-import { weapons, assaultRifle } from '../../content/weapons'
+import { weapons, weaponOrder, assaultRifle } from '../../content/weapons'
 import { enemies as enemyDefs } from '../../content/enemies'
 import { getWaveDefinition } from '../../content/waves'
 import { createEnemy, createPlayer } from '../entities/factories'
 import { updateEnemyMovement } from '../ai/enemyAI'
 import { applyDamage } from '../combat/damage'
 import { tickWeaponTimers, tryFire } from '../combat/weapons'
+import { resolveExplosion } from '../combat/explosions'
 import { circlesIntersect } from '../collision/collision'
 import {
   createWaveState,
@@ -44,7 +46,7 @@ const PLAYER_SPEED = 220
 const WAVE_CLEAR_DELAY = 2.2
 const SCREEN_SHAKE_HIT = 0.08
 const SCREEN_SHAKE_PLAYER_HIT = 0.18
-const RECOIL_KICK = 5
+const SCREEN_SHAKE_EXPLOSION = 0.3
 const RECOIL_RECOVERY_RATE = 45
 
 export class GameEngine {
@@ -63,12 +65,16 @@ export class GameEngine {
 
   constructor(seed: number = Date.now()) {
     this.rng = mulberry32(seed)
-    this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, assaultRifle)
+    this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, weaponOrder, assaultRifle.id)
     startWave(this.wave, 1)
   }
 
   get weaponDef() {
-    return weapons[this.player.weapon.defId] ?? assaultRifle
+    return weapons[this.player.equippedWeaponId] ?? assaultRifle
+  }
+
+  private get weaponState() {
+    return this.player.weapons[this.player.equippedWeaponId]
   }
 
   /** Returns and clears queued gameplay events (for the audio/UI layer to react to). */
@@ -87,6 +93,7 @@ export class GameEngine {
 
     this.stats.survivalTime += dt
     this.updatePlayerMovement(input, dt)
+    this.updateWeaponSwitch(input)
     this.updateWeapon(input, dt)
     this.updateProjectiles(dt)
     this.updateSpawning(dt)
@@ -126,23 +133,35 @@ export class GameEngine {
     this.player.rotation = Math.atan2(input.aimY - this.player.position.y, input.aimX - this.player.position.x)
   }
 
+  private updateWeaponSwitch(input: InputState): void {
+    if (!input.switchTo) return
+    if (input.switchTo === this.player.equippedWeaponId) return
+    if (!this.player.weapons[input.switchTo]) return
+
+    this.player.equippedWeaponId = input.switchTo
+    this.pushEvent('weaponSwitch')
+  }
+
   private updateWeapon(input: InputState, dt: number): void {
-    const wasReloading = this.player.weapon.reloading
-    tickWeaponTimers(this.player, this.weaponDef, dt)
-    if (wasReloading && !this.player.weapon.reloading) this.pushEvent('reloadComplete')
+    const state = this.weaponState
+    const weapon = this.weaponDef
+
+    const wasReloading = state.reloading
+    tickWeaponTimers(state, weapon, dt)
+    if (wasReloading && !state.reloading) this.pushEvent('reloadComplete')
 
     if (input.firing) {
-      const reloadingBeforeFire = this.player.weapon.reloading
-      const result = tryFire(this.player, this.weaponDef, this.rng)
-      if (result.fired && result.projectile) {
-        this.projectiles.push(result.projectile)
+      const reloadingBeforeFire = state.reloading
+      const result = tryFire(this.player.position, this.player.rotation, state, weapon, this.rng)
+      if (result.fired) {
+        this.projectiles.push(...result.projectiles)
         this.stats.shotsFired += 1
-        this.recoilAmount = RECOIL_KICK
+        this.recoilAmount = weapon.recoil
         spawnMuzzleFlash(this.particles, this.player.position, this.player.rotation)
         spawnShellCasing(this.particles, this.player.position, this.player.rotation)
         this.pushEvent('shotFired')
       }
-      if (!reloadingBeforeFire && this.player.weapon.reloading) this.pushEvent('reloadStart')
+      if (!reloadingBeforeFire && state.reloading) this.pushEvent('reloadStart')
     }
   }
 
@@ -196,37 +215,80 @@ export class GameEngine {
   private resolveProjectileHits(): void {
     const remainingProjectiles: Projectile[] = []
     for (const projectile of this.projectiles) {
-      let consumed = false
+      let hitEnemy: Enemy | null = null
+
       for (const enemy of this.enemyList) {
         if (!enemy.alive) continue
         const def = enemyDefs[enemy.defId]
         if (!def) continue
         if (circlesIntersect(projectile.position, projectile.radius, enemy.position, def.radius)) {
-          this.stats.shotsHit += 1
-          enemy.hitFlash = 0.12
-          const died = applyDamage(enemy, projectile.damage)
-          spawnImpact(this.particles, this.rng, enemy.position)
-          spawnHitMarker(this.particles, enemy.position, projectile.isCrit)
-          spawnDamageText(this.particles, enemy.position, projectile.damage, projectile.isCrit)
-          this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_HIT)
-          this.pushEvent(projectile.isCrit ? 'critHit' : 'hit')
-          if (died) {
-            enemy.alive = false
-            spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
-            notifyEnemyDeath(this.wave)
-            this.stats.kills += 1
-            this.awardXp(def.xpValue)
-            this.pushEvent('enemyDeath')
-          }
-          consumed = true
+          hitEnemy = enemy
+          this.applyProjectileHit(projectile, enemy, def)
           break
         }
       }
-      if (!consumed) remainingProjectiles.push(projectile)
+
+      if (hitEnemy && projectile.explosionRadius) {
+        this.applyExplosion(projectile, hitEnemy.id)
+        continue // rockets are consumed on impact regardless of pierce
+      }
+
+      if (hitEnemy) {
+        if (projectile.pierceRemaining > 0) {
+          projectile.pierceRemaining -= 1
+          remainingProjectiles.push(projectile)
+        }
+        continue
+      }
+
+      remainingProjectiles.push(projectile)
     }
     this.projectiles = remainingProjectiles
     if (this.enemyList.length > 200) {
       this.enemyList = this.enemyList.filter((e) => e.alive)
+    }
+  }
+
+  private applyProjectileHit(projectile: Projectile, enemy: Enemy, def: EnemyDefinition): void {
+    this.stats.shotsHit += 1
+    enemy.hitFlash = 0.12
+    const died = applyDamage(enemy, projectile.damage)
+    spawnImpact(this.particles, this.rng, enemy.position)
+    spawnHitMarker(this.particles, enemy.position, projectile.isCrit)
+    spawnDamageText(this.particles, enemy.position, projectile.damage, projectile.isCrit)
+    this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_HIT)
+    this.pushEvent(projectile.isCrit ? 'critHit' : 'hit')
+    if (died) {
+      enemy.alive = false
+      spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
+      notifyEnemyDeath(this.wave)
+      this.stats.kills += 1
+      this.awardXp(def.xpValue)
+      this.pushEvent('enemyDeath')
+    }
+  }
+
+  private applyExplosion(projectile: Projectile, directHitEnemyId: number): void {
+    if (!projectile.explosionRadius) return
+    const result = resolveExplosion(
+      projectile.position,
+      projectile.explosionRadius,
+      projectile.damage * 0.6,
+      this.enemyList,
+      enemyDefs,
+      this.particles,
+      this.rng,
+      directHitEnemyId,
+    )
+    this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
+    this.pushEvent('explosion')
+    for (const enemy of result.enemiesKilled) {
+      const def = enemyDefs[enemy.defId]
+      if (!def) continue
+      notifyEnemyDeath(this.wave)
+      this.stats.kills += 1
+      this.awardXp(def.xpValue)
+      this.pushEvent('enemyDeath')
     }
   }
 
@@ -263,16 +325,19 @@ export class GameEngine {
   }
 
   getHudSnapshot(): HudSnapshot {
+    const state = this.weaponState
+    const weapon = this.weaponDef
     return {
       status: this.status,
       health: this.player.health,
       maxHealth: this.player.maxHealth,
       armor: this.player.armor,
       maxArmor: this.player.maxArmor,
-      ammoInMag: this.player.weapon.ammoInMag,
-      magazineSize: this.weaponDef.magazineSize,
-      reloading: this.player.weapon.reloading,
-      weaponName: this.weaponDef.name,
+      ammoInMag: state.ammoInMag,
+      magazineSize: weapon.magazineSize,
+      reloading: state.reloading,
+      weaponName: weapon.name,
+      weaponIndex: weaponOrder.findIndex((w) => w.id === weapon.id),
       waveNumber: this.wave.waveIndex,
       enemiesAlive: this.wave.enemiesAlive,
       xp: this.player.xp,

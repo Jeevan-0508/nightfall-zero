@@ -55,6 +55,10 @@ export function spawnSpawnRing(particles: Particle[], position: Vector2): void {
   spawn(particles, 'spawnRing', position, { x: 0, y: 0 }, 0.4, '#4f8cff')
 }
 
+export function spawnExplosion(particles: Particle[], position: Vector2): void {
+  spawn(particles, 'explosion', position, { x: 0, y: 0 }, 0.35, '#ff8a3d')
+}
+
 export function spawnDamageText(particles: Particle[], position: Vector2, amount: number, crit: boolean): void {
   spawn(
     particles,

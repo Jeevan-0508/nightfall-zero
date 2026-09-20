@@ -1,6 +1,7 @@
 import type { Rng } from '../engine/rng'
 import { rangeFloat } from '../engine/rng'
-import type { Player, Projectile, WeaponDefinition } from '../engine/types'
+import type { Projectile, WeaponDefinition, WeaponState } from '../engine/types'
+import type { Vector2 } from '../engine/vector'
 import { fromAngle } from '../engine/vector'
 import { rollWeaponDamage } from './damage'
 
@@ -8,60 +9,77 @@ let projectileIdCounter = 0
 
 export interface FireResult {
   fired: boolean
-  projectile?: Projectile
+  projectiles: Projectile[]
 }
 
-/** Advances reload/cooldown timers. Call once per frame regardless of input. */
-export function tickWeaponTimers(player: Player, weapon: WeaponDefinition, dt: number): void {
-  const w = player.weapon
-  if (w.fireCooldown > 0) w.fireCooldown = Math.max(0, w.fireCooldown - dt)
-  if (w.reloading) {
-    w.reloadRemaining -= dt
-    if (w.reloadRemaining <= 0) {
-      w.reloading = false
-      w.reloadRemaining = 0
-      w.ammoInMag = weapon.magazineSize
+/** Advances reload/cooldown timers. Call once per frame for the equipped weapon. */
+export function tickWeaponTimers(state: WeaponState, weapon: WeaponDefinition, dt: number): void {
+  if (state.fireCooldown > 0) state.fireCooldown = Math.max(0, state.fireCooldown - dt)
+  if (state.reloading) {
+    state.reloadRemaining -= dt
+    if (state.reloadRemaining <= 0) {
+      state.reloading = false
+      state.reloadRemaining = 0
+      state.ammoInMag = weapon.magazineSize
     }
   }
 }
 
-export function startReload(player: Player, weapon: WeaponDefinition): void {
-  if (player.weapon.reloading) return
-  if (player.weapon.ammoInMag >= weapon.magazineSize) return
-  player.weapon.reloading = true
-  player.weapon.reloadRemaining = weapon.reloadTime
+export function startReload(state: WeaponState, weapon: WeaponDefinition): void {
+  if (state.reloading) return
+  if (state.ammoInMag >= weapon.magazineSize) return
+  state.reloading = true
+  state.reloadRemaining = weapon.reloadTime
 }
 
-export function tryFire(player: Player, weapon: WeaponDefinition, rng: Rng): FireResult {
-  const w = player.weapon
-  if (!player.alive) return { fired: false }
-  if (w.reloading) return { fired: false }
-  if (w.fireCooldown > 0) return { fired: false }
-  if (w.ammoInMag <= 0) {
-    startReload(player, weapon)
-    return { fired: false }
-  }
-
-  w.ammoInMag -= 1
-  w.fireCooldown = 1 / weapon.fireRate
-  if (w.ammoInMag === 0) startReload(player, weapon)
-
-  const spreadAngle = player.rotation + rangeFloat(rng, -weapon.spread, weapon.spread)
-  const direction = fromAngle(spreadAngle)
+function spawnOneProjectile(
+  origin: Vector2,
+  aimAngle: number,
+  weapon: WeaponDefinition,
+  rng: Rng,
+): Projectile {
+  const angle = aimAngle + rangeFloat(rng, -weapon.spread, weapon.spread)
+  const direction = fromAngle(angle)
   const { amount, isCrit } = rollWeaponDamage(weapon, rng)
 
   projectileIdCounter += 1
-  const projectile: Projectile = {
+  return {
     id: projectileIdCounter,
-    position: { x: player.position.x, y: player.position.y },
+    position: { x: origin.x, y: origin.y },
     velocity: { x: direction.x * weapon.bulletSpeed, y: direction.y * weapon.bulletSpeed },
     damage: amount,
     isCrit,
     radius: 4,
     distanceRemaining: weapon.range,
+    pierceRemaining: weapon.pierceCount ?? 0,
+    explosionRadius: weapon.explosionRadius,
+  }
+}
+
+export function tryFire(
+  origin: Vector2,
+  aimAngle: number,
+  state: WeaponState,
+  weapon: WeaponDefinition,
+  rng: Rng,
+): FireResult {
+  if (state.reloading) return { fired: false, projectiles: [] }
+  if (state.fireCooldown > 0) return { fired: false, projectiles: [] }
+  if (state.ammoInMag <= 0) {
+    startReload(state, weapon)
+    return { fired: false, projectiles: [] }
   }
 
-  return { fired: true, projectile }
+  state.ammoInMag -= 1
+  state.fireCooldown = 1 / weapon.fireRate
+  if (state.ammoInMag === 0) startReload(state, weapon)
+
+  const projectiles: Projectile[] = []
+  for (let i = 0; i < weapon.pellets; i++) {
+    projectiles.push(spawnOneProjectile(origin, aimAngle, weapon, rng))
+  }
+
+  return { fired: true, projectiles }
 }
 
 export function resetProjectileIdCounter(): void {
