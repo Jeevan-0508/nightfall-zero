@@ -95,6 +95,7 @@ export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine, options:
   drawGrenades(ctx, engine)
   drawPlayer(ctx, engine)
   drawParticlesOver(ctx, engine)
+  drawDynamicLighting(ctx, engine)
   drawGroundFog(ctx, engine)
   drawHitIndicators(ctx, engine, hitIndicators)
   drawVignette(ctx)
@@ -301,11 +302,11 @@ function drawGroundFog(ctx: CanvasRenderingContext2D, engine: GameEngine): void 
 
 function drawObstacles(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   for (const obstacle of engine.map.obstacles) {
-    drawRuin(ctx, obstacle.position.x, obstacle.position.y, obstacle.radius)
+    drawRuin(ctx, obstacle.position.x, obstacle.position.y, obstacle.radius, engine.map.id)
   }
 }
 
-function drawRuin(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
+function drawRuin(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, mapId: string): void {
   const seed = Math.floor(Math.abs(x * 7 + y * 13))
   const variant = seed % 3
 
@@ -359,9 +360,146 @@ function drawRuin(ctx: CanvasRenderingContext2D, x: number, y: number, radius: n
   ctx.beginPath()
   ctx.arc(0, 0, radius, 0, Math.PI * 2)
   ctx.strokeStyle = 'rgba(120, 130, 150, 0.35)'
+  drawEnvProp(ctx, radius, mapId, seed)
   ctx.lineWidth = 1.5
   ctx.stroke()
 
+  ctx.restore()
+}
+
+const PROP_SETS: Record<string, ((ctx: CanvasRenderingContext2D, radius: number, seed: number) => void)[]> = {
+  crossroads: [drawPropBarrier, drawPropWreckedCar],
+  bunker: [drawPropPipeStack, drawPropBlastDoor],
+  scatter: [drawPropWarningSign, drawPropScrapPile],
+}
+
+/** Thematic silhouette drawn on top of the generic ruin body, keyed by map id so each map reads as a distinct place. Runs in the ruin's already-translated local space. */
+function drawEnvProp(ctx: CanvasRenderingContext2D, radius: number, mapId: string, seed: number): void {
+  const set = PROP_SETS[mapId] ?? PROP_SETS.crossroads
+  set[seed % set.length](ctx, radius, seed)
+}
+
+function drawPropBarrier(ctx: CanvasRenderingContext2D, radius: number, seed: number): void {
+  const w = radius * 1.3
+  const h = radius * 0.5
+  ctx.save()
+  ctx.fillStyle = '#4a4d55'
+  ctx.beginPath()
+  ctx.moveTo(-w * 0.5, h * 0.5)
+  ctx.lineTo(w * 0.5, h * 0.5)
+  ctx.lineTo(w * 0.35, -h * 0.5)
+  ctx.lineTo(-w * 0.35, -h * 0.5)
+  ctx.closePath()
+  ctx.fill()
+  ctx.fillStyle = seed % 2 === 0 ? 'rgba(255, 180, 60, 0.85)' : 'rgba(220, 60, 50, 0.85)'
+  ctx.fillRect(-w * 0.42, -h * 0.12, w * 0.84, h * 0.16)
+  ctx.restore()
+}
+
+function drawPropWreckedCar(ctx: CanvasRenderingContext2D, radius: number, seed: number): void {
+  const w = radius * 1.6
+  const h = radius * 0.85
+  ctx.save()
+  ctx.rotate((seed % 7) * 0.12 - 0.35)
+  ctx.fillStyle = '#2a2d33'
+  ctx.beginPath()
+  ctx.roundRect(-w / 2, -h / 2, w, h, h * 0.3)
+  ctx.fill()
+  ctx.fillStyle = '#151719'
+  ctx.beginPath()
+  ctx.roundRect(-w * 0.28, -h * 0.4, w * 0.4, h * 0.35, 3)
+  ctx.fill()
+  const headlightOn = seed % 4 === 0
+  ctx.beginPath()
+  ctx.fillStyle = headlightOn ? '#ffdf8a' : '#3a3a3a'
+  if (headlightOn) {
+    ctx.shadowColor = '#ffdf8a'
+    ctx.shadowBlur = 10
+  }
+  ctx.arc(w * 0.42, 0, radius * 0.09, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.shadowBlur = 0
+  ctx.restore()
+}
+
+function drawPropPipeStack(ctx: CanvasRenderingContext2D, radius: number, seed: number): void {
+  const count = 2 + (seed % 2)
+  const pipeW = radius * 0.5
+  const totalW = pipeW * count * 1.1
+  ctx.save()
+  for (let i = 0; i < count; i++) {
+    const px = -totalW / 2 + i * pipeW * 1.1 + pipeW / 2
+    const grad = ctx.createLinearGradient(px - pipeW / 2, 0, px + pipeW / 2, 0)
+    grad.addColorStop(0, '#5a5f68')
+    grad.addColorStop(0.5, '#82868f')
+    grad.addColorStop(1, '#3d4147')
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.roundRect(px - pipeW / 2, -radius, pipeW, radius * 2, pipeW / 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(230, 180, 40, 0.8)'
+    ctx.fillRect(px - pipeW / 2, -radius * 0.15, pipeW, radius * 0.18)
+  }
+  ctx.restore()
+}
+
+function drawPropBlastDoor(ctx: CanvasRenderingContext2D, radius: number, seed: number): void {
+  const w = radius * 1.7
+  const h = radius * 1.3
+  ctx.save()
+  ctx.fillStyle = '#33302a'
+  ctx.beginPath()
+  ctx.roundRect(-w / 2, -h / 2, w, h, 4)
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(255, 170, 60, 0.4)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8)
+  const lit = seed % 3 !== 0
+  ctx.beginPath()
+  ctx.fillStyle = lit ? '#ff5a3d' : '#3a2a20'
+  if (lit) {
+    ctx.shadowColor = '#ff5a3d'
+    ctx.shadowBlur = 8
+  }
+  ctx.arc(0, -h * 0.3, radius * 0.08, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.shadowBlur = 0
+  ctx.restore()
+}
+
+function drawPropWarningSign(ctx: CanvasRenderingContext2D, radius: number, seed: number): void {
+  ctx.save()
+  ctx.strokeStyle = '#5a5040'
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.moveTo(0, radius * 0.9)
+  ctx.lineTo(0, -radius * 0.2)
+  ctx.stroke()
+  ctx.translate(0, -radius * 0.5)
+  ctx.rotate(Math.PI / 4)
+  const s = radius * 0.55
+  ctx.fillStyle = seed % 2 === 0 ? '#e8b830' : '#c94a3a'
+  ctx.fillRect(-s / 2, -s / 2, s, s)
+  ctx.rotate(-Math.PI / 4)
+  ctx.fillStyle = '#1a1a1a'
+  ctx.font = `bold ${Math.round(radius * 0.6)}px sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('!', 0, 0)
+  ctx.restore()
+}
+
+function drawPropScrapPile(ctx: CanvasRenderingContext2D, radius: number, seed: number): void {
+  ctx.save()
+  for (let i = 0; i < 3; i++) {
+    const angle = (((seed + i * 53) % 360) * Math.PI) / 180
+    const len = radius * (0.9 - i * 0.15)
+    ctx.save()
+    ctx.rotate(angle * 0.3 + i * 0.6)
+    ctx.fillStyle = i % 2 === 0 ? '#4a4038' : '#5c5248'
+    ctx.fillRect(-len / 2, -3, len, 6)
+    ctx.restore()
+  }
   ctx.restore()
 }
 
@@ -842,6 +980,66 @@ function drawExplosion(
     ctx.lineTo(p.position.x + Math.cos(angle) * shardR, p.position.y + Math.sin(angle) * shardR)
     ctx.stroke()
   }
+}
+
+interface LightSource {
+  x: number
+  y: number
+  radius: number
+  color: string
+  strength: number
+}
+
+/** Gathers this frame's light sources (player, muzzle flashes, explosions, boss aura) for the additive lighting pass below. Pure read of engine state, no mutation. */
+function collectLights(engine: GameEngine): LightSource[] {
+  const lights: LightSource[] = [
+    { x: engine.player.position.x, y: engine.player.position.y, radius: 70, color: '#5be3e3', strength: 0.14 },
+  ]
+
+  for (const p of engine.particles) {
+    if (p.kind === 'muzzle') {
+      const alpha = Math.max(0, 1 - p.age / p.ttl)
+      lights.push({ x: p.position.x, y: p.position.y, radius: 55, color: p.color, strength: alpha * 0.3 })
+    } else if (p.kind === 'explosion') {
+      const alpha = Math.max(0, 1 - p.age / p.ttl)
+      lights.push({ x: p.position.x, y: p.position.y, radius: 100, color: '#ff8a3d', strength: alpha * 0.35 })
+    }
+  }
+
+  for (const enemy of engine.enemyList) {
+    if (!enemy.alive) continue
+    const def = enemyDefs[enemy.defId]
+    if (def?.behavior === 'boss') {
+      const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 2.4) * 0.5
+      lights.push({
+        x: enemy.position.x,
+        y: enemy.position.y,
+        radius: def.radius * 3.2,
+        color: enemy.defId === 'overlord' ? '#c9a227' : '#c94a27',
+        strength: 0.16 + pulse * 0.1,
+      })
+    }
+  }
+
+  return lights
+}
+
+/** Additive light-bloom pass: composites soft radial glows over the scene with 'lighter' blending so light sources actually brighten the ground/obstacles beneath them, instead of just drawing their own sprite. */
+function drawDynamicLighting(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  const lights = collectLights(engine)
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  for (const light of lights) {
+    if (light.strength <= 0) continue
+    const gradient = ctx.createRadialGradient(light.x, light.y, 0, light.x, light.y, light.radius)
+    gradient.addColorStop(0, withAlpha(light.color, light.strength))
+    gradient.addColorStop(1, withAlpha(light.color, 0))
+    ctx.fillStyle = gradient
+    ctx.beginPath()
+    ctx.arc(light.x, light.y, light.radius, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
 }
 
 function drawVignette(ctx: CanvasRenderingContext2D): void {
