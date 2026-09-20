@@ -1,4 +1,5 @@
 import { useHudStore } from '../../store/hudStore'
+import { useGameStore } from '../../store/gameStore'
 import { ARENA_HEIGHT, ARENA_WIDTH } from '../../game/engine/types'
 
 function formatTime(seconds: number): string {
@@ -9,6 +10,7 @@ function formatTime(seconds: number): string {
 
 export function HUD() {
   const snapshot = useHudStore((s) => s.snapshot)
+  const debugPanelOpen = useGameStore((s) => s.debugPanelOpen)
   const healthPct = Math.max(0, (snapshot.health / snapshot.maxHealth) * 100)
   const armorPct = Math.max(0, (snapshot.armor / snapshot.maxArmor) * 100)
   const xpPct = Math.max(0, Math.min(100, (snapshot.xp / snapshot.xpToNext) * 100))
@@ -101,6 +103,18 @@ export function HUD() {
           </span>
         </div>
       </div>
+
+      {debugPanelOpen && (
+        <div className="hud-debug-panel">
+          <div className="hud-debug-title">DIRECTOR</div>
+          <div>intensity {snapshot.debug.intensity.toFixed(2)}{snapshot.debug.calmActive ? ' (relief)' : ''}</div>
+          <div>profile {snapshot.debug.profile}</div>
+          <div>move speed {snapshot.debug.avgMovementSpeed.toFixed(0)} px/s</div>
+          <div>nearest enemy {snapshot.debug.avgNearestEnemyDistance.toFixed(0)} px</div>
+          <div>edge distance {snapshot.debug.avgEdgeDistance.toFixed(0)} px</div>
+          <div>accuracy {(snapshot.debug.accuracy * 100).toFixed(0)}%</div>
+        </div>
+      )}
     </div>
   )
 }

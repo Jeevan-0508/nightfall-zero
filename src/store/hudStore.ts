@@ -26,6 +26,15 @@ const initialSnapshot: HudSnapshot = {
   combo: 0,
   playerPosition: { x: 480, y: 300 },
   radarBlips: [],
+  debug: {
+    intensity: 0,
+    calmActive: false,
+    profile: 'balanced',
+    avgMovementSpeed: 0,
+    avgNearestEnemyDistance: 0,
+    avgEdgeDistance: 0,
+    accuracy: 0,
+  },
 }
 
 interface HudStore {

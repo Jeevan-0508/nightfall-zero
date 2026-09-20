@@ -97,6 +97,11 @@ export function GameCanvas() {
         e.preventDefault()
         return
       }
+      if (e.code === 'Backquote') {
+        useGameStore.getState().toggleDebugPanel()
+        e.preventDefault()
+        return
+      }
       const key = keyMap[e.code]
       if (key) {
         input[key] = true

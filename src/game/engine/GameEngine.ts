@@ -30,7 +30,8 @@ import { updateBoss } from '../ai/bossAI'
 import { tryRangedAttack } from '../combat/rangedAttack'
 import { abilityOrder } from '../../content/abilities'
 import { tickAbilityTimers, tryActivate } from '../combat/abilities'
-import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, type DirectorState } from '../director/director'
+import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, applyProfileCounter, type DirectorState } from '../director/director'
+import { createTelemetryState, updateTelemetry, type TelemetryState } from '../director/telemetry'
 import { applyMetaUpgrades } from '../meta/metaProgression'
 import { getGameMode, defaultGameMode, type GameModeDefinition } from '../../content/gameModes'
 import { applyDamage } from '../combat/damage'
@@ -92,6 +93,7 @@ export class GameEngine {
   comboTimer = 0
   recoilAmount = 0
   director: DirectorState = createDirectorState()
+  telemetry: TelemetryState = createTelemetryState()
   pendingUpgradeChoices: UpgradeOption[] = []
   map: MapDefinition
   mode: GameModeDefinition
@@ -152,6 +154,7 @@ export class GameEngine {
     this.stats.survivalTime += dt
     const healthArmorBefore = this.player.health + this.player.armor
     const killsBefore = this.stats.kills
+    const positionBefore = { x: this.player.position.x, y: this.player.position.y }
 
     this.updatePlayerMovement(input, dt)
     this.updateWeaponSwitch(input)
@@ -169,6 +172,18 @@ export class GameEngine {
     if (this.player.dashInvulnerableTimer > 0) {
       this.player.dashInvulnerableTimer = Math.max(0, this.player.dashInvulnerableTimer - dt)
     }
+
+    let nearestEnemyDistance: number | null = null
+    for (const enemy of this.enemyList) {
+      if (!enemy.alive) continue
+      const d = distance(this.player.position, enemy.position)
+      if (nearestEnemyDistance === null || d < nearestEnemyDistance) nearestEnemyDistance = d
+    }
+    updateTelemetry(this.telemetry, dt, {
+      movementDistance: distance(positionBefore, this.player.position),
+      nearestEnemyDistance,
+      playerPosition: this.player.position,
+    })
 
     updateDirector(this.director, dt, {
       damageTaken: Math.max(0, healthArmorBefore - (this.player.health + this.player.armor)),
@@ -355,6 +370,7 @@ export class GameEngine {
     if (this.wave.waveInProgress) {
       const modifier = getSpawnModifier(this.director)
       applyDirectorBias(this.wave.spawnQueue, modifier.toughEnemyBias)
+      applyProfileCounter(this.wave.spawnQueue, this.telemetry.profile)
       const result = updateWaveManager(this.wave, dt, def.spawnIntervalMs * modifier.intervalMultiplier * this.mode.spawnIntervalMultiplier)
       if (result.spawnDefId) {
         const enemyDef = enemyDefs[result.spawnDefId]
@@ -666,6 +682,15 @@ export class GameEngine {
       radarBlips: this.enemyList
         .filter((e) => e.alive)
         .map((e) => ({ id: e.id, x: e.position.x, y: e.position.y, boss: enemyDefs[e.defId]?.behavior === 'boss' })),
+      debug: {
+        intensity: this.director.intensity,
+        calmActive: this.director.calmTimer > 0,
+        profile: this.telemetry.profile,
+        avgMovementSpeed: this.telemetry.avgMovementSpeed,
+        avgNearestEnemyDistance: this.telemetry.avgNearestEnemyDistance,
+        avgEdgeDistance: this.telemetry.avgEdgeDistance,
+        accuracy: this.stats.shotsFired > 0 ? this.stats.shotsHit / this.stats.shotsFired : 0,
+      },
       abilities: abilityOrder.map((def) => {
         const abilityState = this.player.abilities[def.id]
         return {

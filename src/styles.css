@@ -570,6 +570,29 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.hud-debug-panel {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  min-width: 220px;
+  padding: 10px 12px;
+  background: rgba(10, 14, 12, 0.82);
+  border: 1px solid rgba(90, 220, 150, 0.35);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b7f0c8;
+  pointer-events: none;
+}
+
+.hud-debug-title {
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #eef3fb;
+  margin-bottom: 4px;
+}
+
 .hud-top {
   display: flex;
   align-items: baseline;

@@ -281,6 +281,16 @@ export interface BossHudInfo {
   attackTelegraph: BossAttackId | null
 }
 
+export interface DirectorDebugInfo {
+  intensity: number
+  calmActive: boolean
+  profile: string
+  avgMovementSpeed: number
+  avgNearestEnemyDistance: number
+  avgEdgeDistance: number
+  accuracy: number
+}
+
 export interface HudSnapshot {
   status: GameStatus
   health: number
@@ -306,4 +316,5 @@ export interface HudSnapshot {
   combo: number
   playerPosition: Vector2
   radarBlips: { id: number; x: number; y: number; boss: boolean }[]
+  debug: DirectorDebugInfo
 }

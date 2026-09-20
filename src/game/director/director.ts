@@ -1,4 +1,5 @@
 import { clamp } from '../engine/vector'
+import type { PlayerProfile } from './telemetry'
 
 /**
  * The Adaptive Director watches how the run is going and nudges pacing in
@@ -86,15 +87,15 @@ export const ENEMY_DIFFICULTY_RANK: Record<string, number> = {
  * `queue` to the front. Idempotent: once the right entry already leads, it's
  * a no-op, so this is cheap to call every frame without thrashing the order.
  */
-export function applyDirectorBias(queue: string[], bias: number): void {
+export function applyDirectorBias(queue: string[], bias: number, rankMap: Record<string, number> = ENEMY_DIFFICULTY_RANK): void {
   if (queue.length < 2 || Math.abs(bias) < 0.05) return
 
   const wantHardest = bias > 0
   let targetIndex = 0
-  let targetRank = ENEMY_DIFFICULTY_RANK[queue[0]] ?? 1
+  let targetRank = rankMap[queue[0]] ?? 1
 
   for (let i = 1; i < queue.length; i++) {
-    const rank = ENEMY_DIFFICULTY_RANK[queue[i]] ?? 1
+    const rank = rankMap[queue[i]] ?? 1
     if (wantHardest ? rank > targetRank : rank < targetRank) {
       targetRank = rank
       targetIndex = i
@@ -104,4 +105,35 @@ export function applyDirectorBias(queue: string[], bias: number): void {
   if (targetIndex === 0) return
   const [entry] = queue.splice(targetIndex, 1)
   queue.unshift(entry)
+}
+
+/**
+ * Which roster entry best punishes each detected playstyle, ranked on the
+ * same 1..4 scale as ENEMY_DIFFICULTY_RANK purely so applyDirectorBias can
+ * reuse its front-pull logic. This is deliberate counter-design, not
+ * difficulty scaling: a kiter sees more of what catches up to them
+ * (runner) or out-ranges them (spitter); a camper sees the AOE rusher
+ * (exploder) and the ambusher that punishes standing still (stalker); an
+ * edge-hugger sees the enemies that close distance fastest or flank from
+ * behind (stalker, runner); a brawler already gets full value out of
+ * melee, so they see more ranged pressure (spitter) and raw health checks
+ * (brute) instead of easier kills.
+ */
+export const PROFILE_COUNTER_RANK: Record<PlayerProfile, Record<string, number>> = {
+  balanced: {},
+  kiter: { runner: 4, spitter: 3, exploder: 2, stalker: 2, walker: 1, brute: 1 },
+  camper: { exploder: 4, stalker: 3, spitter: 2, walker: 1, runner: 1, brute: 1 },
+  edgeHugger: { stalker: 4, runner: 3, exploder: 2, spitter: 1, walker: 1, brute: 1 },
+  brawler: { spitter: 4, brute: 3, stalker: 2, walker: 1, runner: 1, exploder: 1 },
+}
+
+/**
+ * Pulls the roster entry that best counters the detected profile to the
+ * front of the wave's own spawn queue. A no-op for 'balanced' (nothing to
+ * counter) and for any queue where the counter entry isn't present.
+ */
+export function applyProfileCounter(queue: string[], profile: PlayerProfile): void {
+  const rankMap = PROFILE_COUNTER_RANK[profile]
+  if (!rankMap || Object.keys(rankMap).length === 0) return
+  applyDirectorBias(queue, 1, rankMap)
 }

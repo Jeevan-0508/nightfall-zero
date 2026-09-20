@@ -21,6 +21,7 @@ interface GameStore {
   selectedModeId: string
   seedInput: string
   paused: boolean
+  debugPanelOpen: boolean
   goToLoadout: () => void
   goToArmory: () => void
   goToSettings: () => void
@@ -28,6 +29,7 @@ interface GameStore {
   selectMode: (modeId: string) => void
   setSeedInput: (seedInput: string) => void
   setPaused: (paused: boolean) => void
+  toggleDebugPanel: () => void
   startRun: () => void
   endRun: (result: RunResult) => void
   returnToMenu: () => void
@@ -46,6 +48,7 @@ export const useGameStore = create<GameStore>((set) => ({
   selectedModeId: defaultGameMode.id,
   seedInput: '',
   paused: false,
+  debugPanelOpen: false,
   goToLoadout: () => set({ view: 'loadout' }),
   goToArmory: () => set({ view: 'armory' }),
   goToSettings: () => set({ view: 'settings' }),
@@ -53,6 +56,7 @@ export const useGameStore = create<GameStore>((set) => ({
   selectMode: (modeId) => set({ selectedModeId: modeId }),
   setSeedInput: (seedInput) => set({ seedInput }),
   setPaused: (paused) => set({ paused }),
+  toggleDebugPanel: () => set((s) => ({ debugPanelOpen: !s.debugPanelOpen })),
   startRun: () => set((s) => ({ view: 'playing', runId: s.runId + 1, lastResult: null, pendingUpgrades: null, paused: false })),
   endRun: (result) => set({ view: 'gameover', lastResult: result, pendingUpgrades: null, paused: false }),
   returnToMenu: () => set({ view: 'menu', paused: false }),
