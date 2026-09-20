@@ -49,6 +49,7 @@ export function GameCanvas() {
   const setSnapshot = useHudStore((s) => s.setSnapshot)
   const endRun = useGameStore((s) => s.endRun)
   const setPendingUpgrades = useGameStore((s) => s.setPendingUpgrades)
+  const selectedWeaponId = useGameStore((s) => s.selectedWeaponId)
 
   useEffect(() => {
     const canvasEl = canvasRef.current
@@ -57,7 +58,7 @@ export function GameCanvas() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const engine = new GameEngine()
+    const engine = new GameEngine(undefined, selectedWeaponId)
     const input: InputState = {
       up: false,
       down: false,
@@ -236,7 +237,7 @@ export function GameCanvas() {
       canvas.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [setSnapshot, endRun, setPendingUpgrades])
+  }, [setSnapshot, endRun, setPendingUpgrades, selectedWeaponId])
 
   return (
     <canvas

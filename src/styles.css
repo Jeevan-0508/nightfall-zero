@@ -88,6 +88,89 @@ button {
   letter-spacing: 1px;
 }
 
+.loadout-panel {
+  text-align: center;
+  padding: 40px 48px;
+  border: 1px solid rgba(120, 160, 220, 0.2);
+  border-radius: 8px;
+  background: rgba(8, 12, 20, 0.6);
+  box-shadow: 0 0 60px rgba(60, 120, 220, 0.08);
+  max-width: 640px;
+}
+
+.loadout-title {
+  font-size: 28px;
+  letter-spacing: 3px;
+  margin: 0;
+  font-weight: 800;
+}
+
+.loadout-rack {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 28px 0;
+}
+
+.loadout-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  background: rgba(20, 26, 36, 0.7);
+  border: 1px solid rgba(120, 160, 220, 0.2);
+  border-radius: 6px;
+  color: #eef3fb;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.loadout-card:hover {
+  border-color: rgba(120, 160, 220, 0.6);
+  background: rgba(30, 40, 54, 0.85);
+}
+
+.loadout-card-selected {
+  border-color: #d64545;
+  background: rgba(60, 24, 24, 0.6);
+}
+
+.loadout-card-index {
+  font-size: 11px;
+  color: #5c7290;
+}
+
+.loadout-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.loadout-card-stats {
+  font-size: 10px;
+  color: #8aa4c8;
+  text-align: center;
+}
+
+.loadout-back {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  background: transparent;
+  color: #8aa4c8;
+  border: 1px solid rgba(140, 160, 200, 0.3);
+  padding: 10px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  border-radius: 4px;
+}
+
+.loadout-back:hover {
+  color: #dbe9ff;
+  border-color: rgba(140, 160, 200, 0.6);
+}
+
 /* ---------- Game Stage ---------- */
 
 .game-root {

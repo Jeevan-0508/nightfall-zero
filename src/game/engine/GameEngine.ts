@@ -93,10 +93,11 @@ export class GameEngine {
   private nextWaveDelay = 0
   private events: EngineEvent[] = []
 
-  constructor(seed: number = Date.now()) {
+  constructor(seed: number = Date.now(), startingWeaponId: string = assaultRifle.id) {
     this.rng = mulberry32(seed)
     this.map = pickMap(this.rng)
-    this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, weaponOrder, assaultRifle.id, abilityOrder)
+    const weaponId = weapons[startingWeaponId] ? startingWeaponId : assaultRifle.id
+    this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, weaponOrder, weaponId, abilityOrder)
     startWave(this.wave, 1)
     this.maybeSpawnBoss(1)
   }

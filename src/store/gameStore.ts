@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import type { UpgradeOption } from '../content/upgrades'
+import { assaultRifle } from '../content/weapons'
 
-export type GameView = 'menu' | 'playing' | 'gameover'
+export type GameView = 'menu' | 'loadout' | 'playing' | 'gameover'
 
 interface RunResult {
   survivalTime: number
@@ -14,6 +15,9 @@ interface GameStore {
   runId: number
   lastResult: RunResult | null
   pendingUpgrades: UpgradeOption[] | null
+  selectedWeaponId: string
+  goToLoadout: () => void
+  selectWeapon: (weaponId: string) => void
   startRun: () => void
   endRun: (result: RunResult) => void
   returnToMenu: () => void
@@ -28,6 +32,9 @@ export const useGameStore = create<GameStore>((set) => ({
   runId: 0,
   lastResult: null,
   pendingUpgrades: null,
+  selectedWeaponId: assaultRifle.id,
+  goToLoadout: () => set({ view: 'loadout' }),
+  selectWeapon: (weaponId) => set({ selectedWeaponId: weaponId }),
   startRun: () => set((s) => ({ view: 'playing', runId: s.runId + 1, lastResult: null, pendingUpgrades: null })),
   endRun: (result) => set({ view: 'gameover', lastResult: result, pendingUpgrades: null }),
   returnToMenu: () => set({ view: 'menu' }),
