@@ -288,3 +288,104 @@ export function playOverchargeStart(): void {
   osc.start()
   osc.stop(audioCtx.currentTime + 0.26)
 }
+
+export function playBossSpawn(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const osc = audioCtx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(60, audioCtx.currentTime)
+  osc.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 0.6)
+
+  const gain = audioCtx.createGain()
+  envelope(audioCtx, gain, 0.02, 0.6, 0.6)
+
+  osc.connect(gain)
+  gain.connect(masterGain)
+  osc.start()
+  osc.stop(audioCtx.currentTime + 0.62)
+}
+
+export function playBossSlam(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const noise = noiseBurst(audioCtx, 0.35)
+  const filter = audioCtx.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.setValueAtTime(500, audioCtx.currentTime)
+  filter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.35)
+
+  const gain = audioCtx.createGain()
+  envelope(audioCtx, gain, 0.001, 0.35, 1)
+
+  noise.connect(filter)
+  filter.connect(gain)
+  gain.connect(masterGain)
+  noise.start()
+  noise.stop(audioCtx.currentTime + 0.36)
+}
+
+export function playBossCharge(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const noise = noiseBurst(audioCtx, 0.2)
+  const filter = audioCtx.createBiquadFilter()
+  filter.type = 'bandpass'
+  filter.frequency.setValueAtTime(300, audioCtx.currentTime)
+  filter.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.2)
+  filter.Q.value = 4
+
+  const gain = audioCtx.createGain()
+  envelope(audioCtx, gain, 0.001, 0.2, 0.55)
+
+  noise.connect(filter)
+  filter.connect(gain)
+  gain.connect(masterGain)
+  noise.start()
+  noise.stop(audioCtx.currentTime + 0.21)
+}
+
+export function playBossBarrage(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const now = audioCtx.currentTime
+  ;[0, 0.05, 0.1, 0.15].forEach((offset) => {
+    const osc = audioCtx.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(700, now + offset)
+    osc.frequency.exponentialRampToValueAtTime(220, now + offset + 0.09)
+    const gain = audioCtx.createGain()
+    gain.gain.setValueAtTime(0, now + offset)
+    gain.gain.linearRampToValueAtTime(0.3, now + offset + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.1)
+    osc.connect(gain)
+    gain.connect(masterGain!)
+    osc.start(now + offset)
+    osc.stop(now + offset + 0.11)
+  })
+}
+
+export function playBossDefeated(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const now = audioCtx.currentTime
+  ;[220, 330, 440, 660].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator()
+    osc.type = 'triangle'
+    osc.frequency.value = freq
+    const gain = audioCtx.createGain()
+    const start = now + i * 0.1
+    gain.gain.setValueAtTime(0, start)
+    gain.gain.linearRampToValueAtTime(0.4, start + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35)
+    osc.connect(gain)
+    gain.connect(masterGain!)
+    osc.start(start)
+    osc.stop(start + 0.36)
+  })
+}

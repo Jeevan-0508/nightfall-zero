@@ -20,6 +20,7 @@ const initialSnapshot: HudSnapshot = {
   survivalTime: 0,
   kills: 0,
   abilities: [],
+  boss: null,
 }
 
 interface HudStore {

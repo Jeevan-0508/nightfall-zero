@@ -6,6 +6,11 @@ import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
 import { weaponOrder } from '../content/weapons'
 import {
+  playBossBarrage,
+  playBossCharge,
+  playBossDefeated,
+  playBossSlam,
+  playBossSpawn,
   playDash,
   playEnemyDeath,
   playEnemySpit,
@@ -191,6 +196,21 @@ export function GameCanvas() {
             break
           case 'overchargeActivated':
             playOverchargeStart()
+            break
+          case 'bossSpawn':
+            playBossSpawn()
+            break
+          case 'bossSlam':
+            playBossSlam()
+            break
+          case 'bossCharge':
+            playBossCharge()
+            break
+          case 'bossBarrage':
+            playBossBarrage()
+            break
+          case 'bossDefeated':
+            playBossDefeated()
             break
         }
       }

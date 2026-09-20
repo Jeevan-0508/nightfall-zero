@@ -30,7 +30,7 @@ export interface WeaponState {
   reloadRemaining: number
 }
 
-export type EnemyBehavior = 'melee' | 'ranged' | 'stalker'
+export type EnemyBehavior = 'melee' | 'ranged' | 'stalker' | 'boss'
 
 export interface EnemyDefinition {
   id: string
@@ -57,6 +57,17 @@ export interface EnemyDefinition {
   visibleDuration?: number
   cloakDuration?: number
   cloakSpeedMultiplier?: number
+  // boss behavior: cycles idle -> telegraph -> attack through a fixed rotation
+  // of slam / charge / barrage attacks, each one clearly telegraphed first
+  bossAttackInterval?: number // seconds spent idle/chasing between attacks
+  bossTelegraphDuration?: number // seconds the attack is telegraphed before it fires
+  bossSlamDamage?: number
+  bossSlamRadius?: number
+  bossChargeSpeedMultiplier?: number // multiplies def.speed for the charge dash
+  bossChargeDuration?: number
+  bossBarrageCount?: number
+  bossBarrageDamage?: number
+  bossBarrageProjectileSpeed?: number
 }
 
 export interface PlayerUpgrades {
@@ -101,6 +112,9 @@ export interface Player {
   alive: boolean
 }
 
+export type BossPhase = 'idle' | 'telegraph' | 'attack'
+export type BossAttackId = 'slam' | 'charge' | 'barrage'
+
 export interface Enemy {
   id: number
   defId: string
@@ -114,6 +128,10 @@ export interface Enemy {
   rangedCooldown: number
   cloaked: boolean
   phaseTimer: number
+  bossPhase: BossPhase
+  bossAttackId: BossAttackId | null
+  bossTimer: number
+  bossLockedDir: Vector2
 }
 
 export interface Projectile {
@@ -221,6 +239,11 @@ export type EngineEventType =
   | 'dashUsed'
   | 'grenadeThrown'
   | 'overchargeActivated'
+  | 'bossSpawn'
+  | 'bossSlam'
+  | 'bossCharge'
+  | 'bossBarrage'
+  | 'bossDefeated'
 
 export interface EngineEvent {
   type: EngineEventType
@@ -233,6 +256,13 @@ export interface AbilityHudInfo {
   cooldown: number
   cooldownRemaining: number
   active: boolean
+}
+
+export interface BossHudInfo {
+  name: string
+  health: number
+  maxHealth: number
+  attackTelegraph: BossAttackId | null
 }
 
 export interface HudSnapshot {
@@ -254,4 +284,5 @@ export interface HudSnapshot {
   survivalTime: number
   kills: number
   abilities: AbilityHudInfo[]
+  boss: BossHudInfo | null
 }

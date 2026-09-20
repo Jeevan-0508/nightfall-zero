@@ -114,6 +114,23 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
       ctx.stroke()
     }
 
+    if (enemy.bossPhase === 'telegraph') {
+      const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 20) * 0.5
+      ctx.beginPath()
+      ctx.arc(0, 0, def.radius + 8 + pulse * 6, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(255, 60, 60, ${0.5 + pulse * 0.4})`
+      ctx.lineWidth = 3
+      ctx.stroke()
+
+      if (enemy.bossAttackId === 'slam') {
+        ctx.beginPath()
+        ctx.arc(0, 0, def.bossSlamRadius ?? 100, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(255, 60, 60, 0.35)'
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
+    }
+
     ctx.beginPath()
     ctx.arc(0, 0, def.radius, 0, Math.PI * 2)
     ctx.fillStyle = enemy.hitFlash > 0 ? '#ffffff' : def.color

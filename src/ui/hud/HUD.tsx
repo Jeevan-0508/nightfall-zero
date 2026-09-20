@@ -27,6 +27,23 @@ export function HUD() {
         <div className="hud-xp-fill" style={{ width: `${xpPct}%` }} />
       </div>
 
+      {snapshot.boss && (
+        <div className="hud-boss">
+          <div className="hud-boss-name">
+            {snapshot.boss.name}
+            {snapshot.boss.attackTelegraph && (
+              <span className="hud-boss-telegraph">{snapshot.boss.attackTelegraph.toUpperCase()}</span>
+            )}
+          </div>
+          <div className="hud-boss-bar">
+            <div
+              className="hud-boss-fill"
+              style={{ width: `${Math.max(0, (snapshot.boss.health / snapshot.boss.maxHealth) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="hud-bottom">
         <div className="hud-left">
           <div className="hud-bars">

@@ -1,6 +1,7 @@
 import { mulberry32, type Rng } from './rng'
 import { clamp, distance, fromAngle } from './vector'
 import type {
+  BossAttackId,
   Enemy,
   EnemyDefinition,
   EnemyProjectile,
@@ -18,11 +19,12 @@ import type {
 } from './types'
 import { ARENA_HEIGHT, ARENA_WIDTH } from './types'
 import { weapons, weaponOrder, assaultRifle } from '../../content/weapons'
-import { enemies as enemyDefs } from '../../content/enemies'
+import { enemies as enemyDefs, overlord } from '../../content/enemies'
 import { getWaveDefinition } from '../../content/waves'
-import { createEnemy, createGrenade, createPlayer } from '../entities/factories'
+import { createEnemy, createEnemyProjectile, createGrenade, createPlayer } from '../entities/factories'
 import { pickUpgradeChoices, type UpgradeOption } from '../../content/upgrades'
 import { updateEnemyMovement } from '../ai/enemyAI'
+import { updateBoss } from '../ai/bossAI'
 import { tryRangedAttack } from '../combat/rangedAttack'
 import { abilityOrder } from '../../content/abilities'
 import { tickAbilityTimers, tryActivate } from '../combat/abilities'
@@ -67,6 +69,7 @@ const GRENADE_FUSE = 1.0
 const GRENADE_DRAG = 3
 const OVERCHARGE_FIRE_RATE_MULT = 1.4
 const OVERCHARGE_SPEED_MULT = 1.3
+const BOSS_WAVE_INTERVAL = 5
 
 export class GameEngine {
   player: Player
@@ -91,6 +94,7 @@ export class GameEngine {
     this.rng = mulberry32(seed)
     this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, weaponOrder, assaultRifle.id, abilityOrder)
     startWave(this.wave, 1)
+    this.maybeSpawnBoss(1)
   }
 
   get weaponDef(): WeaponDefinition {
@@ -311,10 +315,7 @@ export class GameEngine {
     for (const enemy of result.enemiesKilled) {
       const def = enemyDefs[enemy.defId]
       if (!def) continue
-      notifyEnemyDeath(this.wave)
-      this.stats.kills += 1
-      this.awardXp(def.xpValue)
-      this.pushEvent('enemyDeath')
+      this.notifyKill(def)
     }
   }
 
@@ -340,9 +341,20 @@ export class GameEngine {
     } else if (this.nextWaveDelay > 0) {
       this.nextWaveDelay -= dt
       if (this.nextWaveDelay <= 0) {
-        startWave(this.wave, this.wave.waveIndex + 1)
+        const nextWaveIndex = this.wave.waveIndex + 1
+        startWave(this.wave, nextWaveIndex)
+        this.maybeSpawnBoss(nextWaveIndex)
       }
     }
+  }
+
+  /** Every BOSS_WAVE_INTERVAL waves, a boss spawns alongside the normal roster and counts toward wave-clear. */
+  private maybeSpawnBoss(waveIndex: number): void {
+    if (waveIndex % BOSS_WAVE_INTERVAL !== 0) return
+    const boss = createEnemy(overlord, { x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.2 })
+    this.enemyList.push(boss)
+    this.wave.enemiesAlive += 1
+    this.pushEvent('bossSpawn')
   }
 
   private updateEnemies(dt: number): void {
@@ -350,6 +362,15 @@ export class GameEngine {
     for (const enemy of aliveEnemies) {
       const def = enemyDefs[enemy.defId]
       if (!def) continue
+
+      if (def.behavior === 'boss') {
+        const bossResult = updateBoss(enemy, def, this.player, dt)
+        if (enemy.attackCooldown > 0) enemy.attackCooldown = Math.max(0, enemy.attackCooldown - dt)
+        if (enemy.hitFlash > 0) enemy.hitFlash = Math.max(0, enemy.hitFlash - dt)
+        this.resolveBossAttack(enemy, def, bossResult.resolveAttack)
+        continue
+      }
+
       updateEnemyMovement(enemy, def, this.player, aliveEnemies, dt)
 
       const shot = tryRangedAttack(enemy, def, this.player)
@@ -360,6 +381,42 @@ export class GameEngine {
         this.pushEvent('enemySpit')
       }
     }
+  }
+
+  private resolveBossAttack(enemy: Enemy, def: EnemyDefinition, attackId: BossAttackId | null): void {
+    if (!attackId) return
+
+    if (attackId === 'slam') {
+      const radius = def.bossSlamRadius ?? 100
+      if (distance(enemy.position, this.player.position) <= radius) {
+        this.applyDamageToPlayer(def.bossSlamDamage ?? 20)
+        this.pushEvent('playerHit')
+      }
+      spawnExplosion(this.particles, enemy.position)
+      this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
+      this.pushEvent('bossSlam')
+      return
+    }
+
+    if (attackId === 'barrage') {
+      const count = def.bossBarrageCount ?? 6
+      const baseAngle = Math.atan2(
+        this.player.position.y - enemy.position.y,
+        this.player.position.x - enemy.position.x,
+      )
+      const spread = Math.PI / 6
+      const speed = def.bossBarrageProjectileSpeed ?? 220
+      for (let i = 0; i < count; i++) {
+        const t = count === 1 ? 0.5 : i / (count - 1)
+        const angle = baseAngle - spread / 2 + spread * t
+        const velocity = { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }
+        this.enemyProjectiles.push(createEnemyProjectile(enemy.position, velocity, def.bossBarrageDamage ?? 10, 500))
+      }
+      this.pushEvent('bossBarrage')
+      return
+    }
+
+    this.pushEvent('bossCharge')
   }
 
   private resolveEnemyProjectileHits(): void {
@@ -429,10 +486,7 @@ export class GameEngine {
         this.detonateEnemy(enemy, def)
       } else {
         spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
-        notifyEnemyDeath(this.wave)
-        this.stats.kills += 1
-        this.awardXp(def.xpValue)
-        this.pushEvent('enemyDeath')
+        this.notifyKill(def)
       }
     }
   }
@@ -448,10 +502,7 @@ export class GameEngine {
     spawnExplosion(this.particles, enemy.position)
     this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
     this.pushEvent('explosion')
-    notifyEnemyDeath(this.wave)
-    this.stats.kills += 1
-    this.awardXp(def.xpValue)
-    this.pushEvent('enemyDeath')
+    this.notifyKill(def)
   }
 
   private applyExplosion(projectile: Projectile, directHitEnemyId: number): void {
@@ -471,10 +522,7 @@ export class GameEngine {
     for (const enemy of result.enemiesKilled) {
       const def = enemyDefs[enemy.defId]
       if (!def) continue
-      notifyEnemyDeath(this.wave)
-      this.stats.kills += 1
-      this.awardXp(def.xpValue)
-      this.pushEvent('enemyDeath')
+      this.notifyKill(def)
     }
   }
 
@@ -496,6 +544,14 @@ export class GameEngine {
         this.pushEvent('playerHit')
       }
     }
+  }
+
+  private notifyKill(def: EnemyDefinition): void {
+    notifyEnemyDeath(this.wave)
+    this.stats.kills += 1
+    this.awardXp(def.xpValue)
+    this.pushEvent('enemyDeath')
+    if (def.behavior === 'boss') this.pushEvent('bossDefeated')
   }
 
   private applyDamageToPlayer(amount: number): void {
@@ -536,6 +592,7 @@ export class GameEngine {
   getHudSnapshot(): HudSnapshot {
     const state = this.weaponState
     const weapon = this.weaponDef
+    const bossEnemy = this.enemyList.find((e) => e.alive && enemyDefs[e.defId]?.behavior === 'boss')
     return {
       status: this.status,
       health: this.player.health,
@@ -565,6 +622,14 @@ export class GameEngine {
           active: (abilityState?.activeRemaining ?? 0) > 0,
         }
       }),
+      boss: bossEnemy
+        ? {
+            name: enemyDefs[bossEnemy.defId].name,
+            health: bossEnemy.health,
+            maxHealth: bossEnemy.maxHealth,
+            attackTelegraph: bossEnemy.bossPhase === 'telegraph' ? bossEnemy.bossAttackId : null,
+          }
+        : null,
     }
   }
 }

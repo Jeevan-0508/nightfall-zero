@@ -90,6 +90,33 @@ export const stalker: EnemyDefinition = {
   cloakSpeedMultiplier: 2.6,
 }
 
+/**
+ * Spawns every 5th wave alongside the normal roster. Cycles slam -> charge ->
+ * barrage on a fixed rotation, each attack telegraphed first so it is always
+ * dodgeable, never a surprise one-shot.
+ */
+export const overlord: EnemyDefinition = {
+  id: 'overlord',
+  name: 'Overlord',
+  health: 600,
+  speed: 55,
+  contactDamage: 16,
+  contactCooldown: 0.5,
+  radius: 30,
+  color: '#c9a227',
+  xpValue: 150,
+  behavior: 'boss',
+  bossAttackInterval: 3.5,
+  bossTelegraphDuration: 0.6,
+  bossSlamDamage: 24,
+  bossSlamRadius: 110,
+  bossChargeSpeedMultiplier: 3.2,
+  bossChargeDuration: 0.45,
+  bossBarrageCount: 7,
+  bossBarrageDamage: 9,
+  bossBarrageProjectileSpeed: 230,
+}
+
 export const enemies: Record<string, EnemyDefinition> = {
   [walker.id]: walker,
   [runner.id]: runner,
@@ -97,4 +124,5 @@ export const enemies: Record<string, EnemyDefinition> = {
   [spitter.id]: spitter,
   [exploder.id]: exploder,
   [stalker.id]: stalker,
+  [overlord.id]: overlord,
 }
