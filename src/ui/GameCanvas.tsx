@@ -5,6 +5,7 @@ import { draw, type HitIndicator } from '../game/render/renderer'
 import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
 import { useMetaStore } from '../store/metaStore'
+import { useSettingsStore } from '../store/settingsStore'
 import { getGameMode } from '../content/gameModes'
 import { computeGrade } from '../game/meta/metaProgression'
 import { hashSeed } from '../game/engine/rng'
@@ -41,13 +42,6 @@ const WEAPON_SWITCH_KEYS: Record<string, string> = {
   Digit8: weaponOrder[7].id,
 }
 
-const ABILITY_KEYS: Record<string, string> = {
-  ShiftLeft: 'dash',
-  ShiftRight: 'dash',
-  KeyQ: 'grenade',
-  KeyE: 'overcharge',
-}
-
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const setSnapshot = useHudStore((s) => s.setSnapshot)
@@ -57,6 +51,10 @@ export function GameCanvas() {
   const selectedModeId = useGameStore((s) => s.selectedModeId)
   const seedInput = useGameStore((s) => s.seedInput)
   const upgradeRanks = useMetaStore((s) => s.upgradeRanks)
+  const keybinds = useSettingsStore((s) => s.keybinds)
+  const reducedMotion = useSettingsStore((s) => s.reducedMotion)
+  const screenShakeIntensity = useSettingsStore((s) => s.screenShakeIntensity)
+  const colorblindMode = useSettingsStore((s) => s.colorblindMode)
 
   useEffect(() => {
     const canvasEl = canvasRef.current
@@ -86,14 +84,20 @@ export function GameCanvas() {
 
     type MovementKey = 'up' | 'down' | 'left' | 'right'
     const keyMap: Record<string, MovementKey> = {
-      KeyW: 'up',
+      [keybinds.up]: 'up',
       ArrowUp: 'up',
-      KeyS: 'down',
+      [keybinds.down]: 'down',
       ArrowDown: 'down',
-      KeyA: 'left',
+      [keybinds.left]: 'left',
       ArrowLeft: 'left',
-      KeyD: 'right',
+      [keybinds.right]: 'right',
       ArrowRight: 'right',
+    }
+    const abilityKeys: Record<string, string> = {
+      [keybinds.dash]: 'dash',
+      ShiftRight: 'dash',
+      [keybinds.grenade]: 'grenade',
+      [keybinds.overcharge]: 'overcharge',
     }
 
     function onKeyDown(e: KeyboardEvent) {
@@ -119,7 +123,7 @@ export function GameCanvas() {
         input.switchTo = weaponId
         return
       }
-      const abilityId = ABILITY_KEYS[e.code]
+      const abilityId = abilityKeys[e.code]
       if (abilityId) {
         input.abilityTrigger = abilityId
         e.preventDefault()
@@ -167,7 +171,7 @@ export function GameCanvas() {
       lastTime = now
 
       if (useGameStore.getState().paused) {
-        draw(ctx!, engine, { hitIndicators })
+        draw(ctx!, engine, { hitIndicators, reducedMotion, shakeIntensity: screenShakeIntensity, colorblindMode })
         rafId = requestAnimationFrame(tick)
         return
       }
@@ -181,7 +185,7 @@ export function GameCanvas() {
       if (engine.status === 'dead' && deathStartTime === null) deathStartTime = now
       const deathProgress = deathStartTime !== null ? Math.min(1, (now - deathStartTime) / 700) : 0
 
-      draw(ctx!, engine, { hitIndicators, deathProgress })
+      draw(ctx!, engine, { hitIndicators, deathProgress, reducedMotion, shakeIntensity: screenShakeIntensity, colorblindMode })
       setSnapshot(engine.getHudSnapshot())
 
       if (engine.pendingUpgradeChoices !== lastUpgradeChoices) {
@@ -305,7 +309,19 @@ export function GameCanvas() {
       canvas.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [setSnapshot, endRun, setPendingUpgrades, selectedWeaponId, upgradeRanks, selectedModeId, seedInput])
+  }, [
+    setSnapshot,
+    endRun,
+    setPendingUpgrades,
+    selectedWeaponId,
+    upgradeRanks,
+    selectedModeId,
+    seedInput,
+    keybinds,
+    reducedMotion,
+    screenShakeIntensity,
+    colorblindMode,
+  ])
 
   return (
     <canvas

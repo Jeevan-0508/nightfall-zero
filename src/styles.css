@@ -1136,6 +1136,74 @@ button {
   flex-shrink: 0;
 }
 
+.settings-row-toggle {
+  flex-wrap: wrap;
+}
+
+.settings-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #b8302f;
+  flex-shrink: 0;
+}
+
+.settings-hint {
+  font-size: 11px;
+  color: #5c7290;
+  flex-basis: 100%;
+}
+
+.settings-keybinds {
+  margin: 28px 0;
+}
+
+.settings-keybinds-title {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #8aa4c8;
+  margin: 0 0 12px;
+}
+
+.settings-keybind-row {
+  margin: 10px 0;
+  padding: 10px 16px;
+}
+
+.settings-rebind-button {
+  margin-left: auto;
+  min-width: 96px;
+  padding: 6px 14px;
+  background: rgba(20, 26, 36, 0.9);
+  border: 1px solid rgba(120, 160, 220, 0.35);
+  border-radius: 4px;
+  color: #eef3fb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.settings-rebind-button:hover {
+  border-color: rgba(184, 48, 47, 0.6);
+}
+
+.settings-rebind-reset {
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid rgba(120, 160, 220, 0.25);
+  border-radius: 4px;
+  color: #5c7290;
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.settings-rebind-reset:hover {
+  color: #8aa4c8;
+  border-color: rgba(120, 160, 220, 0.5);
+}
+
 .loadout-daily-note {
   margin: 20px 0;
   font-size: 11px;
