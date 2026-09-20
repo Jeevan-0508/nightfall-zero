@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { GameEngine } from '../game/engine/GameEngine'
 import { ARENA_HEIGHT, ARENA_WIDTH, type InputState } from '../game/engine/types'
-import { draw } from '../game/render/renderer'
+import { draw, type HitIndicator } from '../game/render/renderer'
 import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
 import { useMetaStore } from '../store/metaStore'
@@ -148,13 +148,15 @@ export function GameCanvas() {
     let rafId = 0
     let ended = false
     let lastUpgradeChoices = engine.pendingUpgradeChoices
+    const hitIndicators: HitIndicator[] = []
+    let deathStartTime: number | null = null
 
     function tick(now: number) {
       const dt = Math.min(0.05, (now - lastTime) / 1000)
       lastTime = now
 
       if (useGameStore.getState().paused) {
-        draw(ctx!, engine)
+        draw(ctx!, engine, { hitIndicators })
         rafId = requestAnimationFrame(tick)
         return
       }
@@ -162,7 +164,13 @@ export function GameCanvas() {
       engine.update(dt, input)
       input.switchTo = null
       input.abilityTrigger = null
-      draw(ctx!, engine)
+      for (const indicator of hitIndicators) indicator.alpha -= dt * 1.6
+      while (hitIndicators.length > 0 && hitIndicators[0].alpha <= 0) hitIndicators.shift()
+
+      if (engine.status === 'dead' && deathStartTime === null) deathStartTime = now
+      const deathProgress = deathStartTime !== null ? Math.min(1, (now - deathStartTime) / 700) : 0
+
+      draw(ctx!, engine, { hitIndicators, deathProgress })
       setSnapshot(engine.getHudSnapshot())
 
       if (engine.pendingUpgradeChoices !== lastUpgradeChoices) {
@@ -187,9 +195,30 @@ export function GameCanvas() {
           case 'enemyDeath':
             playEnemyDeath()
             break
-          case 'playerHit':
+          case 'playerHit': {
             playPlayerHit()
+            let nearest: { position: { x: number; y: number } } | null = null
+            let nearestDistSq = Infinity
+            for (const enemy of engine.enemyList) {
+              if (!enemy.alive) continue
+              const dx = enemy.position.x - engine.player.position.x
+              const dy = enemy.position.y - engine.player.position.y
+              const distSq = dx * dx + dy * dy
+              if (distSq < nearestDistSq) {
+                nearestDistSq = distSq
+                nearest = enemy
+              }
+            }
+            if (nearest) {
+              const angle = Math.atan2(
+                nearest.position.y - engine.player.position.y,
+                nearest.position.x - engine.player.position.x,
+              )
+              hitIndicators.push({ angle, alpha: 1 })
+              if (hitIndicators.length > 6) hitIndicators.shift()
+            }
             break
+          }
           case 'reloadStart':
             playReloadStart()
             break
@@ -235,7 +264,7 @@ export function GameCanvas() {
         }
       }
 
-      if (engine.status === 'dead' && !ended) {
+      if (engine.status === 'dead' && !ended && deathProgress >= 1) {
         ended = true
         const result = {
           survivalTime: engine.stats.survivalTime,

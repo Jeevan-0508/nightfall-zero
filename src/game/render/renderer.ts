@@ -58,10 +58,29 @@ function buildEmbers(): Ember[] {
 
 const EMBERS = buildEmbers()
 
-export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+export interface HitIndicator {
+  angle: number
+  alpha: number
+}
+
+export interface DrawOptions {
+  hitIndicators?: HitIndicator[]
+  deathProgress?: number
+}
+
+export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine, options: DrawOptions = {}): void {
+  const { hitIndicators = [], deathProgress = 0 } = options
   const { width, height } = ctx.canvas
   ctx.save()
   ctx.clearRect(0, 0, width, height)
+
+  if (deathProgress > 0) {
+    ctx.filter = `grayscale(${Math.min(70, deathProgress * 90)}%) contrast(${100 + deathProgress * 12}%)`
+    const zoom = 1 + deathProgress * 0.05
+    ctx.translate(width / 2, height / 2)
+    ctx.scale(zoom, zoom)
+    ctx.translate(-width / 2, -height / 2)
+  }
 
   const shakeX = engine.screenShake > 0 ? (Math.random() - 0.5) * engine.screenShake * 24 : 0
   const shakeY = engine.screenShake > 0 ? (Math.random() - 0.5) * engine.screenShake * 24 : 0
@@ -77,9 +96,41 @@ export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   drawPlayer(ctx, engine)
   drawParticlesOver(ctx, engine)
   drawGroundFog(ctx, engine)
+  drawHitIndicators(ctx, engine, hitIndicators)
   drawVignette(ctx)
 
+  if (deathProgress > 0) {
+    ctx.filter = 'none'
+    ctx.fillStyle = `rgba(160, 20, 20, ${deathProgress * 0.32})`
+    ctx.fillRect(0, 0, width, height)
+  }
+
   ctx.restore()
+}
+
+function drawHitIndicators(ctx: CanvasRenderingContext2D, engine: GameEngine, indicators: HitIndicator[]): void {
+  const { position, radius } = engine.player
+  for (const indicator of indicators) {
+    const alpha = Math.max(0, Math.min(1, indicator.alpha))
+    if (alpha <= 0) continue
+    const dist = radius + 22
+    const x = position.x + Math.cos(indicator.angle) * dist
+    const y = position.y + Math.sin(indicator.angle) * dist
+
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(indicator.angle)
+    ctx.beginPath()
+    ctx.moveTo(-8, -10)
+    ctx.lineTo(8, 0)
+    ctx.lineTo(-8, 10)
+    ctx.closePath()
+    ctx.fillStyle = `rgba(255, 60, 60, ${alpha * 0.85})`
+    ctx.shadowColor = 'rgba(255, 60, 60, 0.8)'
+    ctx.shadowBlur = 8
+    ctx.fill()
+    ctx.restore()
+  }
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
