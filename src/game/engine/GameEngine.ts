@@ -21,6 +21,7 @@ import { getWaveDefinition } from '../../content/waves'
 import { createEnemy, createPlayer } from '../entities/factories'
 import { updateEnemyMovement } from '../ai/enemyAI'
 import { tryRangedAttack } from '../combat/rangedAttack'
+import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, type DirectorState } from '../director/director'
 import { applyDamage } from '../combat/damage'
 import { tickWeaponTimers, tryFire } from '../combat/weapons'
 import { resolveExplosion } from '../combat/explosions'
@@ -64,6 +65,7 @@ export class GameEngine {
   status: GameStatus = 'playing'
   screenShake = 0
   recoilAmount = 0
+  director: DirectorState = createDirectorState()
   private rng: Rng
   private nextWaveDelay = 0
   private events: EngineEvent[] = []
@@ -97,6 +99,9 @@ export class GameEngine {
     if (this.status !== 'playing') return
 
     this.stats.survivalTime += dt
+    const healthArmorBefore = this.player.health + this.player.armor
+    const killsBefore = this.stats.kills
+
     this.updatePlayerMovement(input, dt)
     this.updateWeaponSwitch(input)
     this.updateWeapon(input, dt)
@@ -107,6 +112,13 @@ export class GameEngine {
     this.resolveProjectileHits()
     this.resolveContactDamage()
     this.resolveEnemyProjectileHits()
+
+    updateDirector(this.director, dt, {
+      damageTaken: Math.max(0, healthArmorBefore - (this.player.health + this.player.armor)),
+      killsThisFrame: this.stats.kills - killsBefore,
+      healthRatio: this.player.maxHealth > 0 ? this.player.health / this.player.maxHealth : 0,
+    })
+
     this.particles = updateParticles(this.particles, dt)
     if (this.screenShake > 0) this.screenShake = Math.max(0, this.screenShake - dt * 4)
     if (this.recoilAmount > 0) this.recoilAmount = Math.max(0, this.recoilAmount - dt * RECOIL_RECOVERY_RATE)
@@ -201,7 +213,9 @@ export class GameEngine {
   private updateSpawning(dt: number): void {
     const def = getWaveDefinition(this.wave.waveIndex || 1)
     if (this.wave.waveInProgress) {
-      const result = updateWaveManager(this.wave, dt, def.spawnIntervalMs)
+      const modifier = getSpawnModifier(this.director)
+      applyDirectorBias(this.wave.spawnQueue, modifier.toughEnemyBias)
+      const result = updateWaveManager(this.wave, dt, def.spawnIntervalMs * modifier.intervalMultiplier)
       if (result.spawnDefId) {
         const enemyDef = enemyDefs[result.spawnDefId]
         if (enemyDef) {
