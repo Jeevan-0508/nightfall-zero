@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { GameEngine } from '../game/engine/GameEngine'
+import { assaultRifle } from '../content/weapons'
 import { createEnemy, createPlayer } from '../game/entities/factories'
-import { overlord } from '../content/enemies'
+import { overlord, executioner } from '../content/enemies'
 import { updateBoss } from '../game/ai/bossAI'
 import type { InputState } from '../game/engine/types'
 
@@ -18,6 +19,12 @@ function idleInput(overrides: Partial<InputState> = {}): InputState {
     abilityTrigger: null,
     ...overrides,
   }
+}
+
+function forceWaveComplete(engine: GameEngine) {
+  engine.wave.spawnQueue = []
+  engine.wave.enemiesAlive = 0
+  for (let i = 0; i < 60; i++) engine.update(0.1, idleInput())
 }
 
 describe('updateBoss (pure state machine)', () => {
@@ -56,6 +63,22 @@ describe('updateBoss (pure state machine)', () => {
     updateBoss(boss, overlord, player, overlord.bossAttackInterval ?? 3.5)
     result = updateBoss(boss, overlord, player, overlord.bossTelegraphDuration ?? 0.6)
     if (result.resolveAttack) resolved.push(result.resolveAttack)
+
+    expect(resolved).toEqual(['slam', 'charge', 'barrage'])
+  })
+
+  it('runs the same slam/charge/barrage rotation for a different boss definition (Executioner)', () => {
+    const boss = createEnemy(executioner, { x: 0, y: 0 })
+    const player = createPlayer({ x: 1000, y: 0 }, [], 'none')
+    const resolved: string[] = []
+
+    for (let cycle = 0; cycle < 3; cycle++) {
+      updateBoss(boss, executioner, player, executioner.bossAttackInterval ?? 3.5)
+      const telegraphResult = updateBoss(boss, executioner, player, executioner.bossTelegraphDuration ?? 0.6)
+      if (telegraphResult.resolveAttack) resolved.push(telegraphResult.resolveAttack)
+      updateBoss(boss, executioner, player, executioner.bossChargeDuration ?? 0.45)
+      updateBoss(boss, executioner, player, 0.15)
+    }
 
     expect(resolved).toEqual(['slam', 'charge', 'barrage'])
   })
@@ -158,5 +181,21 @@ describe('GameEngine boss integration', () => {
     expect(bossDefeatedFired).toBe(true)
     expect(engine.stats.kills).toBe(killsBefore + 1)
     expect(engine.wave.enemiesAlive).toBe(enemiesAliveBefore - 1)
+  })
+
+  it('alternates from Overlord to Executioner on the second boss encounter', () => {
+    const engine = new GameEngine(60, assaultRifle.id, {}, 'blitz')
+    engine.player.health = 99999
+    engine.player.armor = 99999
+
+    forceWaveComplete(engine) // -> wave 2
+    forceWaveComplete(engine) // -> wave 3, first boss encounter
+    expect(engine.enemyList.some((e) => e.defId === overlord.id)).toBe(true)
+    expect(engine.enemyList.some((e) => e.defId === executioner.id)).toBe(false)
+
+    forceWaveComplete(engine) // -> wave 4
+    forceWaveComplete(engine) // -> wave 5
+    forceWaveComplete(engine) // -> wave 6, second boss encounter
+    expect(engine.enemyList.some((e) => e.defId === executioner.id)).toBe(true)
   })
 })

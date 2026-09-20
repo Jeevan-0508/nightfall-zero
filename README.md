@@ -18,7 +18,7 @@
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![tests](https://img.shields.io/badge/tests-112_passing-22c55e?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-114_passing-22c55e?style=for-the-badge)
 ![Pages](https://img.shields.io/badge/GitHub%20Pages-LIVE-22c55e?style=for-the-badge&logo=github)
 ![MIT](https://img.shields.io/badge/Licence-MIT-38bdf8?style=for-the-badge)
 
@@ -90,9 +90,11 @@ Four AI behaviors, each reading the same battlefield differently:
 - **Melee**: closes distance and attacks on contact
 - **Ranged**: holds distance, fires back
 - **Stalker**: cloaks and uncloaks on a timer, closing in while invisible
-- **Boss (Overlord)**: a three-attack state machine, a telegraphed ground **slam**, a locked-direction **charge**
-  dash, and a **barrage** of spread projectiles. Every attack telegraphs before it lands, on a fixed rotation, so
-  reading the tell is the actual skill check.
+- **Boss**: a three-attack state machine, a telegraphed ground **slam**, a locked-direction **charge** dash, and
+  a **barrage** of spread projectiles. Every attack telegraphs before it lands, on a fixed rotation, so reading
+  the tell is the actual skill check. Two bosses run on that same state machine with different stats, alternating
+  every encounter: the tanky **Overlord** first, then the faster, harder-hitting **Executioner**, back to the
+  Overlord on the third, and so on.
 
 ## 🗺️ The Maps
 
@@ -166,7 +168,7 @@ Balance, ranks, and lifetime stats (total runs, total kills, best survival time,
 | Rendering | **Canvas 2D** (hand-rolled) | The actual game: player, enemies, projectiles, particles, obstacles |
 | State | **Zustand 5** | Menu/loadout/armory/game-over view routing, HUD snapshot store, `persist`-backed meta-progression |
 | Build | **Vite 8** | Dev server and production bundling |
-| Testing | **Vitest 5** (happy-dom) | 112 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
+| Testing | **Vitest 5** (happy-dom) | 114 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
 | Lint | **oxlint** | Fast, zero-config linting |
 | Runtime | **bun** | Install, dev, test, build |
 | Hosting | **GitHub Pages** | Static deploy via GitHub Actions on every push to `main` |
@@ -186,7 +188,7 @@ src/game/meta/        Pure meta-progression logic: scrap payout, upgrade cost cu
 src/content/          Data only: weapons, enemies, waves, upgrades, abilities, maps, meta-upgrades
 src/store/            Zustand stores: game view/loadout/armory, HUD snapshot, persisted meta-progression
 src/ui/               React components: canvas host, HUD, menus, overlays
-src/tests/            112 tests, one file per subsystem, testing pure functions directly
+src/tests/            114 tests, one file per subsystem, testing pure functions directly
 ```
 
 The engine is a plain class with no framework dependency: `GameEngine.update(dt, input)` advances one frame and
@@ -201,7 +203,7 @@ git clone https://github.com/Jeevan-0508/nightfall-zero.git
 cd nightfall-zero
 bun install
 bun run dev         # http://localhost:5173/nightfall-zero/
-bun run test        # 112 tests
+bun run test        # 114 tests
 bun run typecheck
 bun run build
 ```
@@ -210,8 +212,8 @@ Requires [bun](https://bun.sh).
 
 ## 📖 Honest Limitations
 
-- **One boss.** The attack-rotation state machine (telegraph → attack → cooldown) is built to hold more than one
-  boss definition; only the Overlord ships today.
+- **Two bosses.** The attack-rotation state machine (telegraph, attack, cooldown) is built to hold any number of
+  boss definitions; only the Overlord and the Executioner ship today, alternating every encounter.
 - **No pickups.** Every weapon and ability is available from the first frame. The loadout screen picks what you
   start equipped with, not what you have access to.
 - **One save slot.** The Armory's scrap, upgrade ranks, and lifetime stats persist in `localStorage`, but there

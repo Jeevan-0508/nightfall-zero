@@ -20,7 +20,7 @@ import type {
 } from './types'
 import { ARENA_HEIGHT, ARENA_WIDTH } from './types'
 import { weapons, weaponOrder, assaultRifle } from '../../content/weapons'
-import { enemies as enemyDefs, overlord } from '../../content/enemies'
+import { enemies as enemyDefs, overlord, executioner } from '../../content/enemies'
 import { pickMap } from '../../content/maps'
 import { getWaveDefinition } from '../../content/waves'
 import { createEnemy, createEnemyProjectile, createGrenade, createPlayer } from '../entities/factories'
@@ -367,10 +367,16 @@ export class GameEngine {
     }
   }
 
-  /** Every mode.bossWaveInterval waves, a boss spawns alongside the normal roster and counts toward wave-clear. */
+  /**
+   * Every mode.bossWaveInterval waves, a boss spawns alongside the normal roster and counts
+   * toward wave-clear. Bosses alternate: the tanky Overlord on the first encounter, the
+   * faster, harder-hitting Executioner on the second, back to Overlord on the third, and so on.
+   */
   private maybeSpawnBoss(waveIndex: number): void {
     if (waveIndex % this.mode.bossWaveInterval !== 0) return
-    const boss = this.spawnEnemy(overlord, { x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.2 })
+    const encounterNumber = waveIndex / this.mode.bossWaveInterval
+    const bossDef = encounterNumber % 2 === 1 ? overlord : executioner
+    const boss = this.spawnEnemy(bossDef, { x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.2 })
     this.enemyList.push(boss)
     this.wave.enemiesAlive += 1
     this.pushEvent('bossSpawn')

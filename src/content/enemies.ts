@@ -117,6 +117,34 @@ export const overlord: EnemyDefinition = {
   bossBarrageProjectileSpeed: 230,
 }
 
+/**
+ * The second boss encounter. Same telegraph -> attack -> cooldown state machine as the
+ * Overlord, tuned as a glass cannon: less health, a faster attack tempo, a shorter
+ * telegraph window, and a harder-hitting charge and barrage. Alternates with the
+ * Overlord every boss wave.
+ */
+export const executioner: EnemyDefinition = {
+  id: 'executioner',
+  name: 'Executioner',
+  health: 420,
+  speed: 65,
+  contactDamage: 20,
+  contactCooldown: 0.5,
+  radius: 26,
+  color: '#c94a27',
+  xpValue: 170,
+  behavior: 'boss',
+  bossAttackInterval: 2.6,
+  bossTelegraphDuration: 0.45,
+  bossSlamDamage: 20,
+  bossSlamRadius: 90,
+  bossChargeSpeedMultiplier: 4.0,
+  bossChargeDuration: 0.35,
+  bossBarrageCount: 5,
+  bossBarrageDamage: 12,
+  bossBarrageProjectileSpeed: 260,
+}
+
 export const enemies: Record<string, EnemyDefinition> = {
   [walker.id]: walker,
   [runner.id]: runner,
@@ -125,4 +153,5 @@ export const enemies: Record<string, EnemyDefinition> = {
   [exploder.id]: exploder,
   [stalker.id]: stalker,
   [overlord.id]: overlord,
+  [executioner.id]: executioner,
 }
