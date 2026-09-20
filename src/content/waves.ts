@@ -23,20 +23,56 @@ export const waves: WaveDefinition[] = [
     ],
     spawnIntervalMs: 650,
   },
+  {
+    waveNumber: 4,
+    spawns: [
+      { defId: 'walker', count: 4 },
+      { defId: 'runner', count: 5 },
+      { defId: 'brute', count: 2 },
+      { defId: 'spitter', count: 3 },
+    ],
+    spawnIntervalMs: 620,
+  },
+  {
+    waveNumber: 5,
+    spawns: [
+      { defId: 'walker', count: 4 },
+      { defId: 'runner', count: 5 },
+      { defId: 'brute', count: 2 },
+      { defId: 'spitter', count: 3 },
+      { defId: 'exploder', count: 3 },
+    ],
+    spawnIntervalMs: 600,
+  },
+  {
+    waveNumber: 6,
+    spawns: [
+      { defId: 'walker', count: 4 },
+      { defId: 'runner', count: 5 },
+      { defId: 'brute', count: 3 },
+      { defId: 'spitter', count: 3 },
+      { defId: 'exploder', count: 3 },
+      { defId: 'stalker', count: 2 },
+    ],
+    spawnIntervalMs: 580,
+  },
 ]
 
-// After the authored waves are cleared, escalate endlessly using wave 3's
-// composition ratio scaled by how many extra waves have passed.
+// After the authored waves are cleared, escalate endlessly using wave 6's
+// full roster, scaled by how many extra waves have passed.
 export function generateEndlessWave(waveNumber: number): WaveDefinition {
   const extra = waveNumber - waves.length
   return {
     waveNumber,
     spawns: [
-      { defId: 'walker', count: 5 + extra },
-      { defId: 'runner', count: 6 + Math.floor(extra * 1.5) },
-      { defId: 'brute', count: 2 + Math.floor(extra / 2) },
+      { defId: 'walker', count: 4 + extra },
+      { defId: 'runner', count: 5 + Math.floor(extra * 1.5) },
+      { defId: 'brute', count: 3 + Math.floor(extra / 2) },
+      { defId: 'spitter', count: 3 + Math.floor(extra / 2) },
+      { defId: 'exploder', count: 3 + Math.floor(extra / 2) },
+      { defId: 'stalker', count: 2 + Math.floor(extra / 3) },
     ],
-    spawnIntervalMs: Math.max(300, 650 - extra * 40),
+    spawnIntervalMs: Math.max(280, 580 - extra * 30),
   }
 }
 

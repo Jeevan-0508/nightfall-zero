@@ -7,6 +7,7 @@ import { useGameStore } from '../store/gameStore'
 import { weaponOrder } from '../content/weapons'
 import {
   playEnemyDeath,
+  playEnemySpit,
   playExplosion,
   playGunshot,
   playHit,
@@ -144,6 +145,9 @@ export function GameCanvas() {
             break
           case 'weaponSwitch':
             playWeaponSwitch()
+            break
+          case 'enemySpit':
+            playEnemySpit()
             break
         }
       }

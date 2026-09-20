@@ -30,6 +30,8 @@ export interface WeaponState {
   reloadRemaining: number
 }
 
+export type EnemyBehavior = 'melee' | 'ranged' | 'stalker'
+
 export interface EnemyDefinition {
   id: string
   name: string
@@ -40,6 +42,21 @@ export interface EnemyDefinition {
   radius: number
   color: string
   xpValue: number
+  behavior: EnemyBehavior
+  // ranged behavior (Spitter): kites at range and fires EnemyProjectiles
+  preferredRange?: number
+  rangedDamage?: number
+  rangedCooldown?: number // seconds between shots
+  rangedProjectileSpeed?: number // px/sec
+  // orthogonal to behavior (Exploder): detonates on contact or death instead
+  // of dealing a normal damage tick
+  explosionDamage?: number
+  explosionRadius?: number
+  // stalker behavior: alternates between a visible approach and a cloaked,
+  // untargetable dash straight at the player
+  visibleDuration?: number
+  cloakDuration?: number
+  cloakSpeedMultiplier?: number
 }
 
 export interface Player {
@@ -69,6 +86,9 @@ export interface Enemy {
   alive: boolean
   hitFlash: number
   attackCooldown: number
+  rangedCooldown: number
+  cloaked: boolean
+  phaseTimer: number
 }
 
 export interface Projectile {
@@ -81,6 +101,16 @@ export interface Projectile {
   distanceRemaining: number
   pierceRemaining: number
   explosionRadius?: number
+}
+
+/** A hostile projectile fired by a ranged enemy (Spitter) at the player. */
+export interface EnemyProjectile {
+  id: number
+  position: Vector2
+  velocity: Vector2
+  damage: number
+  radius: number
+  distanceRemaining: number
 }
 
 export type ParticleKind =
@@ -149,6 +179,7 @@ export type EngineEventType =
   | 'enemySpawn'
   | 'explosion'
   | 'weaponSwitch'
+  | 'enemySpit'
 
 export interface EngineEvent {
   type: EngineEventType

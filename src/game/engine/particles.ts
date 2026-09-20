@@ -59,6 +59,11 @@ export function spawnExplosion(particles: Particle[], position: Vector2): void {
   spawn(particles, 'explosion', position, { x: 0, y: 0 }, 0.35, '#ff8a3d')
 }
 
+export function spawnSpit(particles: Particle[], position: Vector2, angle: number): void {
+  const dir = fromAngle(angle, 30)
+  spawn(particles, 'muzzle', position, dir, 0.08, '#7dffb0')
+}
+
 export function spawnDamageText(particles: Particle[], position: Vector2, amount: number, crit: boolean): void {
   spawn(
     particles,

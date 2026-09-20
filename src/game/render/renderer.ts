@@ -17,6 +17,7 @@ export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   drawParticlesUnder(ctx, engine)
   drawEnemies(ctx, engine)
   drawProjectiles(ctx, engine)
+  drawEnemyProjectiles(ctx, engine)
   drawPlayer(ctx, engine)
   drawParticlesOver(ctx, engine)
   drawVignette(ctx)
@@ -101,6 +102,16 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
 
     ctx.save()
     ctx.translate(enemy.position.x, enemy.position.y)
+    ctx.globalAlpha = enemy.cloaked ? 0.28 : 1
+
+    if (def.explosionRadius) {
+      const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 9) * 0.5
+      ctx.beginPath()
+      ctx.arc(0, 0, def.radius + 4 + pulse * 4, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(224, 71, 58, ${0.3 + pulse * 0.4})`
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
 
     ctx.beginPath()
     ctx.arc(0, 0, def.radius, 0, Math.PI * 2)
@@ -110,15 +121,29 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
     ctx.lineWidth = 2
     ctx.stroke()
 
-    const barWidth = def.radius * 2
-    const healthRatio = Math.max(0, enemy.health / enemy.maxHealth)
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'
-    ctx.fillRect(-barWidth / 2, -def.radius - 10, barWidth, 4)
-    ctx.fillStyle = healthRatio > 0.5 ? '#7fd858' : healthRatio > 0.25 ? '#e0b23a' : '#e0473a'
-    ctx.fillRect(-barWidth / 2, -def.radius - 10, barWidth * healthRatio, 4)
+    if (!enemy.cloaked) {
+      const barWidth = def.radius * 2
+      const healthRatio = Math.max(0, enemy.health / enemy.maxHealth)
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'
+      ctx.fillRect(-barWidth / 2, -def.radius - 10, barWidth, 4)
+      ctx.fillStyle = healthRatio > 0.5 ? '#7fd858' : healthRatio > 0.25 ? '#e0b23a' : '#e0473a'
+      ctx.fillRect(-barWidth / 2, -def.radius - 10, barWidth * healthRatio, 4)
+    }
 
     ctx.restore()
   }
+}
+
+function drawEnemyProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  ctx.fillStyle = '#7dffb0'
+  ctx.shadowColor = '#7dffb0'
+  ctx.shadowBlur = 6
+  for (const p of engine.enemyProjectiles) {
+    ctx.beginPath()
+    ctx.arc(p.position.x, p.position.y, p.radius, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.shadowBlur = 0
 }
 
 function drawProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine): void {

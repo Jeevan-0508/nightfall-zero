@@ -1,8 +1,9 @@
 import { mulberry32, type Rng } from './rng'
-import { clamp } from './vector'
+import { clamp, distance } from './vector'
 import type {
   Enemy,
   EnemyDefinition,
+  EnemyProjectile,
   EngineEvent,
   EngineEventType,
   EngineStats,
@@ -19,6 +20,7 @@ import { enemies as enemyDefs } from '../../content/enemies'
 import { getWaveDefinition } from '../../content/waves'
 import { createEnemy, createPlayer } from '../entities/factories'
 import { updateEnemyMovement } from '../ai/enemyAI'
+import { tryRangedAttack } from '../combat/rangedAttack'
 import { applyDamage } from '../combat/damage'
 import { tickWeaponTimers, tryFire } from '../combat/weapons'
 import { resolveExplosion } from '../combat/explosions'
@@ -33,11 +35,13 @@ import {
 import {
   spawnDamageText,
   spawnDeathBurst,
+  spawnExplosion,
   spawnHitMarker,
   spawnImpact,
   spawnMuzzleFlash,
   spawnShellCasing,
   spawnSpawnRing,
+  spawnSpit,
   updateParticles,
 } from './particles'
 import type { WaveState } from './types'
@@ -53,6 +57,7 @@ export class GameEngine {
   player: Player
   enemyList: Enemy[] = []
   projectiles: Projectile[] = []
+  enemyProjectiles: EnemyProjectile[] = []
   particles: Particle[] = []
   wave: WaveState = createWaveState()
   stats: EngineStats = { kills: 0, shotsFired: 0, shotsHit: 0, survivalTime: 0, waveReached: 0 }
@@ -96,10 +101,12 @@ export class GameEngine {
     this.updateWeaponSwitch(input)
     this.updateWeapon(input, dt)
     this.updateProjectiles(dt)
+    this.updateEnemyProjectiles(dt)
     this.updateSpawning(dt)
     this.updateEnemies(dt)
     this.resolveProjectileHits()
     this.resolveContactDamage()
+    this.resolveEnemyProjectileHits()
     this.particles = updateParticles(this.particles, dt)
     if (this.screenShake > 0) this.screenShake = Math.max(0, this.screenShake - dt * 4)
     if (this.recoilAmount > 0) this.recoilAmount = Math.max(0, this.recoilAmount - dt * RECOIL_RECOVERY_RATE)
@@ -178,6 +185,19 @@ export class GameEngine {
     this.projectiles = alive
   }
 
+  private updateEnemyProjectiles(dt: number): void {
+    const alive: EnemyProjectile[] = []
+    for (const p of this.enemyProjectiles) {
+      const travel = Math.hypot(p.velocity.x, p.velocity.y) * dt
+      p.position = { x: p.position.x + p.velocity.x * dt, y: p.position.y + p.velocity.y * dt }
+      p.distanceRemaining -= travel
+      const outOfBounds =
+        p.position.x < 0 || p.position.x > ARENA_WIDTH || p.position.y < 0 || p.position.y > ARENA_HEIGHT
+      if (p.distanceRemaining > 0 && !outOfBounds) alive.push(p)
+    }
+    this.enemyProjectiles = alive
+  }
+
   private updateSpawning(dt: number): void {
     const def = getWaveDefinition(this.wave.waveIndex || 1)
     if (this.wave.waveInProgress) {
@@ -209,7 +229,30 @@ export class GameEngine {
       const def = enemyDefs[enemy.defId]
       if (!def) continue
       updateEnemyMovement(enemy, def, this.player, aliveEnemies, dt)
+
+      const shot = tryRangedAttack(enemy, def, this.player)
+      if (shot) {
+        this.enemyProjectiles.push(shot)
+        const angle = Math.atan2(shot.velocity.y, shot.velocity.x)
+        spawnSpit(this.particles, enemy.position, angle)
+        this.pushEvent('enemySpit')
+      }
     }
+  }
+
+  private resolveEnemyProjectileHits(): void {
+    const remaining: EnemyProjectile[] = []
+    for (const p of this.enemyProjectiles) {
+      if (circlesIntersect(p.position, p.radius, this.player.position, this.player.radius)) {
+        this.applyDamageToPlayer(p.damage)
+        spawnImpact(this.particles, this.rng, p.position, 3)
+        this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_HIT)
+        this.pushEvent('playerHit')
+        continue
+      }
+      remaining.push(p)
+    }
+    this.enemyProjectiles = remaining
   }
 
   private resolveProjectileHits(): void {
@@ -218,7 +261,7 @@ export class GameEngine {
       let hitEnemy: Enemy | null = null
 
       for (const enemy of this.enemyList) {
-        if (!enemy.alive) continue
+        if (!enemy.alive || enemy.cloaked) continue
         const def = enemyDefs[enemy.defId]
         if (!def) continue
         if (circlesIntersect(projectile.position, projectile.radius, enemy.position, def.radius)) {
@@ -260,12 +303,33 @@ export class GameEngine {
     this.pushEvent(projectile.isCrit ? 'critHit' : 'hit')
     if (died) {
       enemy.alive = false
-      spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
-      notifyEnemyDeath(this.wave)
-      this.stats.kills += 1
-      this.awardXp(def.xpValue)
-      this.pushEvent('enemyDeath')
+      if (def.explosionDamage && def.explosionRadius) {
+        this.detonateEnemy(enemy, def)
+      } else {
+        spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
+        notifyEnemyDeath(this.wave)
+        this.stats.kills += 1
+        this.awardXp(def.xpValue)
+        this.pushEvent('enemyDeath')
+      }
     }
+  }
+
+  /** Deals falloff-scaled area damage to the player and reports the enemy as killed (Exploder). */
+  private detonateEnemy(enemy: Enemy, def: EnemyDefinition): void {
+    const dist = distance(enemy.position, this.player.position)
+    const radius = def.explosionRadius ?? 0
+    if (radius > 0 && dist <= radius && def.explosionDamage) {
+      const falloff = Math.max(0.3, 1 - dist / radius)
+      this.applyDamageToPlayer(Math.round(def.explosionDamage * falloff))
+    }
+    spawnExplosion(this.particles, enemy.position)
+    this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
+    this.pushEvent('explosion')
+    notifyEnemyDeath(this.wave)
+    this.stats.kills += 1
+    this.awardXp(def.xpValue)
+    this.pushEvent('enemyDeath')
   }
 
   private applyExplosion(projectile: Projectile, directHitEnemyId: number): void {
@@ -298,6 +362,11 @@ export class GameEngine {
       const def = enemyDefs[enemy.defId]
       if (!def) continue
       if (circlesIntersect(enemy.position, def.radius, this.player.position, this.player.radius)) {
+        if (def.explosionDamage && def.explosionRadius) {
+          enemy.alive = false
+          this.detonateEnemy(enemy, def)
+          continue
+        }
         enemy.attackCooldown = def.contactCooldown
         this.applyDamageToPlayer(def.contactDamage)
         this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_PLAYER_HIT)

@@ -156,6 +156,24 @@ export function playWeaponSwitch(): void {
   osc.stop(audioCtx.currentTime + 0.06)
 }
 
+export function playEnemySpit(): void {
+  const audioCtx = getContext()
+  if (!audioCtx || !masterGain) return
+
+  const osc = audioCtx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(900, audioCtx.currentTime)
+  osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1)
+
+  const gain = audioCtx.createGain()
+  envelope(audioCtx, gain, 0.001, 0.1, 0.3)
+
+  osc.connect(gain)
+  gain.connect(masterGain)
+  osc.start()
+  osc.stop(audioCtx.currentTime + 0.11)
+}
+
 export function playReloadStart(): void {
   const audioCtx = getContext()
   if (!audioCtx || !masterGain) return

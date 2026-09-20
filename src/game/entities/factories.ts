@@ -1,4 +1,4 @@
-import type { EnemyDefinition, Enemy, Player, WeaponDefinition, WeaponState } from '../engine/types'
+import type { EnemyDefinition, Enemy, EnemyProjectile, Player, WeaponDefinition, WeaponState } from '../engine/types'
 import type { Vector2 } from '../engine/vector'
 
 let enemyIdCounter = 0
@@ -50,9 +50,35 @@ export function createEnemy(def: EnemyDefinition, position: Vector2): Enemy {
     alive: true,
     hitFlash: 0,
     attackCooldown: 0,
+    rangedCooldown: 0,
+    cloaked: false,
+    phaseTimer: def.behavior === 'stalker' ? (def.visibleDuration ?? 2.2) : 0,
   }
 }
 
 export function resetEnemyIdCounter(): void {
   enemyIdCounter = 0
+}
+
+let enemyProjectileIdCounter = 0
+
+export function createEnemyProjectile(
+  position: Vector2,
+  velocity: Vector2,
+  damage: number,
+  range: number,
+): EnemyProjectile {
+  enemyProjectileIdCounter += 1
+  return {
+    id: enemyProjectileIdCounter,
+    position: { ...position },
+    velocity,
+    damage,
+    radius: 5,
+    distanceRemaining: range,
+  }
+}
+
+export function resetEnemyProjectileIdCounter(): void {
+  enemyProjectileIdCounter = 0
 }
