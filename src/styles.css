@@ -119,6 +119,31 @@ button {
   font-size: 13px;
 }
 
+.menu-stats {
+  display: flex;
+  gap: 22px;
+  justify-content: center;
+  margin: -8px 0 26px;
+}
+
+.menu-stats > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-stats-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #eef3fb;
+}
+
+.menu-stats-label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #6c81a0;
+  margin-top: 2px;
+}
+
 .menu-play {
   background: #b8302f;
   color: #fff;
@@ -938,6 +963,58 @@ button {
   margin-top: 4px;
 }
 
+.gameover-grade {
+  width: 56px;
+  height: 56px;
+  line-height: 56px;
+  margin: 4px auto 18px;
+  font-size: 30px;
+  font-weight: 800;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+.gameover-grade-S { color: #ffbe3c; }
+.gameover-grade-A { color: #5adc96; }
+.gameover-grade-B { color: #50aaff; }
+.gameover-grade-C { color: #d6dce6; }
+.gameover-grade-D { color: #8a4fd8; }
+
+.gameover-new-best {
+  color: #ffbe3c;
+  font-weight: 800;
+}
+
+.gameover-recap {
+  margin-bottom: 20px;
+}
+
+.gameover-recap-title {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #6c81a0;
+  margin-bottom: 8px;
+}
+
+.gameover-recap-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.gameover-recap-item {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(90, 220, 150, 0.25);
+  color: #eef3fb;
+}
+
+.gameover-recap-item-rare { border-color: rgba(80, 170, 255, 0.5); }
+.gameover-recap-item-epic { border-color: rgba(190, 100, 255, 0.55); }
+.gameover-recap-item-legendary { border-color: rgba(255, 190, 60, 0.65); }
+
 .gameover-seed {
   display: block;
   width: 100%;
@@ -1057,6 +1134,13 @@ button {
   width: 44px;
   text-align: right;
   flex-shrink: 0;
+}
+
+.loadout-daily-note {
+  margin: 20px 0;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: #ffbe3c;
 }
 
 .loadout-seed-row {

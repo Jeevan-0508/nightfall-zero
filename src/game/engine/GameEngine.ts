@@ -95,6 +95,7 @@ export class GameEngine {
   director: DirectorState = createDirectorState()
   telemetry: TelemetryState = createTelemetryState()
   pendingUpgradeChoices: UpgradeOption[] = []
+  chosenUpgrades: UpgradeOption[] = []
   map: MapDefinition
   mode: GameModeDefinition
   readonly seed: number
@@ -122,7 +123,8 @@ export class GameEngine {
 
   get weaponDef(): WeaponDefinition {
     const base = weapons[this.player.equippedWeaponId] ?? assaultRifle
-    const effective = applyUpgradesToWeapon(base, this.player.upgrades)
+    const upgraded = applyUpgradesToWeapon(base, this.player.upgrades)
+    const effective = { ...upgraded, damage: upgraded.damage * this.mode.playerDamageMultiplier }
     if (this.isOverchargeActive()) {
       return { ...effective, fireRate: effective.fireRate * OVERCHARGE_FIRE_RATE_MULT }
     }
@@ -641,7 +643,10 @@ export class GameEngine {
   chooseUpgrade(id: string): void {
     if (this.status !== 'levelup') return
     const option = this.pendingUpgradeChoices.find((o) => o.id === id)
-    if (option) option.apply(this.player)
+    if (option) {
+      option.apply(this.player)
+      this.chosenUpgrades.push(option)
+    }
     this.pushEvent('upgradeChosen')
 
     this.pendingLevelUps = Math.max(0, this.pendingLevelUps - 1)

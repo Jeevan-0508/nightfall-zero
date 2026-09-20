@@ -1,6 +1,6 @@
 import { useGameStore } from '../../store/gameStore'
 import { weaponOrder } from '../../content/weapons'
-import { gameModes } from '../../content/gameModes'
+import { gameModes, getGameMode } from '../../content/gameModes'
 
 export function LoadoutScreen() {
   const selectedWeaponId = useGameStore((s) => s.selectedWeaponId)
@@ -47,19 +47,25 @@ export function LoadoutScreen() {
           ))}
         </div>
 
-        <div className="settings-row loadout-seed-row">
-          <label className="settings-label" htmlFor="seed-input">
-            SEED
-          </label>
-          <input
-            id="seed-input"
-            className="loadout-seed-input"
-            type="text"
-            placeholder="Leave blank for a random run"
-            value={seedInput}
-            onChange={(e) => setSeedInput(e.target.value)}
-          />
-        </div>
+        {getGameMode(selectedModeId).dailySeed ? (
+          <p className="loadout-daily-note">
+            SEED LOCKED TO TODAY (UTC) &middot; resets tomorrow &middot; same run for everyone
+          </p>
+        ) : (
+          <div className="settings-row loadout-seed-row">
+            <label className="settings-label" htmlFor="seed-input">
+              SEED
+            </label>
+            <input
+              id="seed-input"
+              className="loadout-seed-input"
+              type="text"
+              placeholder="Leave blank for a random run"
+              value={seedInput}
+              onChange={(e) => setSeedInput(e.target.value)}
+            />
+          </div>
+        )}
 
         <button className="menu-play" onClick={startRun}>
           START RUN

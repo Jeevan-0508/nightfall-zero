@@ -1,9 +1,20 @@
 import { useGameStore } from '../../store/gameStore'
+import { useMetaStore } from '../../store/metaStore'
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
 
 export function MainMenu() {
   const goToLoadout = useGameStore((s) => s.goToLoadout)
   const goToArmory = useGameStore((s) => s.goToArmory)
   const goToSettings = useGameStore((s) => s.goToSettings)
+  const totalRuns = useMetaStore((s) => s.totalRuns)
+  const totalKills = useMetaStore((s) => s.totalKills)
+  const bestSurvivalTime = useMetaStore((s) => s.bestSurvivalTime)
+  const bestWaveReached = useMetaStore((s) => s.bestWaveReached)
 
   return (
     <div className="menu-screen">
@@ -12,6 +23,26 @@ export function MainMenu() {
           NIGHTFALL <span className="menu-title-slash">//</span> ZERO
         </h1>
         <p className="menu-tagline">SURVIVE. ADAPT. FIGHT BACK.</p>
+        {totalRuns > 0 && (
+          <div className="menu-stats">
+            <div>
+              <span className="menu-stats-value">{totalRuns}</span>
+              <span className="menu-stats-label">RUNS</span>
+            </div>
+            <div>
+              <span className="menu-stats-value">{totalKills}</span>
+              <span className="menu-stats-label">KILLS</span>
+            </div>
+            <div>
+              <span className="menu-stats-value">{bestWaveReached}</span>
+              <span className="menu-stats-label">BEST WAVE</span>
+            </div>
+            <div>
+              <span className="menu-stats-value">{formatTime(bestSurvivalTime)}</span>
+              <span className="menu-stats-label">BEST TIME</span>
+            </div>
+          </div>
+        )}
         <button className="menu-play" onClick={goToLoadout}>
           PLAY
         </button>

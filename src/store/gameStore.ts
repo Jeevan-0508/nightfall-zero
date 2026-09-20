@@ -5,11 +5,21 @@ import { defaultGameMode } from '../content/gameModes'
 
 export type GameView = 'menu' | 'loadout' | 'armory' | 'settings' | 'playing' | 'gameover'
 
+export interface RunResultUpgrade {
+  id: string
+  name: string
+  rarity: string
+}
+
 export interface RunResult {
   survivalTime: number
   kills: number
   waveReached: number
   seed: number
+  grade: string
+  isNewBestTime: boolean
+  isNewBestWave: boolean
+  chosenUpgrades: RunResultUpgrade[]
 }
 
 interface GameStore {

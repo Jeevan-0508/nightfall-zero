@@ -6,6 +6,7 @@ import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
 import { useMetaStore } from '../store/metaStore'
 import { getGameMode } from '../content/gameModes'
+import { computeGrade } from '../game/meta/metaProgression'
 import { hashSeed } from '../game/engine/rng'
 import { weaponOrder } from '../content/weapons'
 import {
@@ -64,7 +65,12 @@ export function GameCanvas() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const numericSeed = seedInput.trim() ? hashSeed(seedInput.trim()) : undefined
+    const activeMode = getGameMode(selectedModeId)
+    const numericSeed = activeMode.dailySeed
+      ? hashSeed(`daily-${new Date().toISOString().slice(0, 10)}`)
+      : seedInput.trim()
+        ? hashSeed(seedInput.trim())
+        : undefined
     const engine = new GameEngine(numericSeed, selectedWeaponId, upgradeRanks, selectedModeId)
     const input: InputState = {
       up: false,
@@ -271,14 +277,20 @@ export function GameCanvas() {
 
       if (engine.status === 'dead' && !ended && deathProgress >= 1) {
         ended = true
+        const waveReached = Math.max(engine.stats.waveReached, engine.wave.waveIndex)
+        const priorBest = useMetaStore.getState()
         const result = {
           survivalTime: engine.stats.survivalTime,
           kills: engine.stats.kills,
-          waveReached: Math.max(engine.stats.waveReached, engine.wave.waveIndex),
+          waveReached,
           seed: engine.seed,
+          grade: computeGrade(waveReached),
+          isNewBestTime: engine.stats.survivalTime > priorBest.bestSurvivalTime,
+          isNewBestWave: waveReached > priorBest.bestWaveReached,
+          chosenUpgrades: engine.chosenUpgrades.map((u) => ({ id: u.id, name: u.name, rarity: u.rarity })),
         }
         endRun(result)
-        useMetaStore.getState().recordRunResult(result, getGameMode(selectedModeId).scrapMultiplier)
+        useMetaStore.getState().recordRunResult(result, activeMode.scrapMultiplier)
       }
 
       rafId = requestAnimationFrame(tick)

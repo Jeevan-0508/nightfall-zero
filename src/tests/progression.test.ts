@@ -36,9 +36,27 @@ describe('GameEngine level-up flow', () => {
     engine.update(1 / 60, idleInput())
     expect(engine.stats.survivalTime).toBe(survivalBefore) // paused: no frame advances while choosing
 
-    engine.chooseUpgrade(engine.pendingUpgradeChoices[0].id)
+    const chosenId = engine.pendingUpgradeChoices[0].id
+    engine.chooseUpgrade(chosenId)
     expect(engine.status).toBe('playing')
     expect(engine.pendingUpgradeChoices).toHaveLength(0)
+    expect(engine.chosenUpgrades).toHaveLength(1)
+    expect(engine.chosenUpgrades[0].id).toBe(chosenId)
+  })
+
+  it('does not record a chosen upgrade for an unknown id', () => {
+    const engine = new GameEngine(45)
+    engine.player.position = { x: 100, y: 100 }
+    engine.player.xp = 95
+    const target = createEnemy(walker, { x: 300, y: 100 })
+    target.health = 1
+    engine.enemyList.push(target)
+
+    const input = idleInput({ aimX: 300, aimY: 100, firing: true })
+    for (let i = 0; i < 240 && engine.status !== 'levelup'; i++) engine.update(1 / 60, input)
+
+    engine.chooseUpgrade('not-a-real-upgrade-id')
+    expect(engine.chosenUpgrades).toHaveLength(0)
   })
 
   it('scales XP earned from kills by xpGainMultiplier', () => {
