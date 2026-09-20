@@ -2,6 +2,7 @@ import { useGameStore } from '../../store/gameStore'
 
 export function MainMenu() {
   const goToLoadout = useGameStore((s) => s.goToLoadout)
+  const goToArmory = useGameStore((s) => s.goToArmory)
 
   return (
     <div className="menu-screen">
@@ -12,6 +13,9 @@ export function MainMenu() {
         <p className="menu-tagline">SURVIVE. ADAPT. FIGHT BACK.</p>
         <button className="menu-play" onClick={goToLoadout}>
           PLAY
+        </button>
+        <button className="menu-armory" onClick={goToArmory}>
+          ARMORY
         </button>
         <p className="menu-hint">WASD to move &middot; Mouse to aim &middot; Click to fire &middot; 1-8 to switch weapons &middot; SHIFT to dash &middot; Q for grenade &middot; E to overcharge</p>
         <p className="menu-footer">SAME NIGHT. A DIFFERENT YOU.</p>

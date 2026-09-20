@@ -4,6 +4,7 @@ import { ARENA_HEIGHT, ARENA_WIDTH, type InputState } from '../game/engine/types
 import { draw } from '../game/render/renderer'
 import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
+import { useMetaStore } from '../store/metaStore'
 import { weaponOrder } from '../content/weapons'
 import {
   playBossBarrage,
@@ -50,6 +51,7 @@ export function GameCanvas() {
   const endRun = useGameStore((s) => s.endRun)
   const setPendingUpgrades = useGameStore((s) => s.setPendingUpgrades)
   const selectedWeaponId = useGameStore((s) => s.selectedWeaponId)
+  const upgradeRanks = useMetaStore((s) => s.upgradeRanks)
 
   useEffect(() => {
     const canvasEl = canvasRef.current
@@ -58,7 +60,7 @@ export function GameCanvas() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const engine = new GameEngine(undefined, selectedWeaponId)
+    const engine = new GameEngine(undefined, selectedWeaponId, upgradeRanks)
     const input: InputState = {
       up: false,
       down: false,
@@ -218,11 +220,13 @@ export function GameCanvas() {
 
       if (engine.status === 'dead' && !ended) {
         ended = true
-        endRun({
+        const result = {
           survivalTime: engine.stats.survivalTime,
           kills: engine.stats.kills,
           waveReached: Math.max(engine.stats.waveReached, engine.wave.waveIndex),
-        })
+        }
+        endRun(result)
+        useMetaStore.getState().recordRunResult(result)
       }
 
       rafId = requestAnimationFrame(tick)
@@ -237,7 +241,7 @@ export function GameCanvas() {
       canvas.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [setSnapshot, endRun, setPendingUpgrades, selectedWeaponId])
+  }, [setSnapshot, endRun, setPendingUpgrades, selectedWeaponId, upgradeRanks])
 
   return (
     <canvas

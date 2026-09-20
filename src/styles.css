@@ -75,6 +75,25 @@ button {
   transform: translateY(-2px);
 }
 
+.menu-armory {
+  display: block;
+  margin: 10px auto 0;
+  background: transparent;
+  color: #8aa4c8;
+  border: 1px solid rgba(140, 160, 200, 0.3);
+  padding: 10px 40px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  border-radius: 4px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.menu-armory:hover {
+  color: #dbe9ff;
+  border-color: rgba(140, 160, 200, 0.6);
+}
+
 .menu-hint {
   margin-top: 24px;
   color: #5c7290;
@@ -169,6 +188,99 @@ button {
 .loadout-back:hover {
   color: #dbe9ff;
   border-color: rgba(140, 160, 200, 0.6);
+}
+
+.armory-panel {
+  text-align: center;
+  padding: 40px 48px;
+  border: 1px solid rgba(120, 160, 220, 0.2);
+  border-radius: 8px;
+  background: rgba(8, 12, 20, 0.6);
+  box-shadow: 0 0 60px rgba(60, 120, 220, 0.08);
+  max-width: 640px;
+}
+
+.armory-stats {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 20px 0 28px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #8aa4c8;
+}
+
+.armory-stats strong {
+  color: #dbe9ff;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+.armory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.armory-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: rgba(20, 26, 36, 0.7);
+  border: 1px solid rgba(120, 160, 220, 0.2);
+  border-radius: 6px;
+}
+
+.armory-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.armory-row-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.armory-row-rank {
+  font-size: 10px;
+  color: #5c7290;
+  font-weight: 400;
+  margin-left: 6px;
+}
+
+.armory-row-desc {
+  font-size: 11px;
+  color: #8aa4c8;
+}
+
+.armory-buy {
+  flex-shrink: 0;
+  background: #b8302f;
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.armory-buy:hover:not(:disabled) {
+  background: #d43a38;
+}
+
+.armory-buy:disabled {
+  background: rgba(120, 140, 170, 0.15);
+  color: #5c7290;
+  cursor: default;
 }
 
 /* ---------- Game Stage ---------- */

@@ -3,6 +3,7 @@ import { GameCanvas } from './ui/GameCanvas'
 import { HUD } from './ui/hud/HUD'
 import { MainMenu } from './ui/menus/MainMenu'
 import { LoadoutScreen } from './ui/menus/LoadoutScreen'
+import { ArmoryScreen } from './ui/menus/ArmoryScreen'
 import { GameOverOverlay } from './ui/overlays/GameOverOverlay'
 import { UpgradeOverlay } from './ui/overlays/UpgradeOverlay'
 
@@ -12,6 +13,7 @@ export default function App() {
 
   if (view === 'menu') return <MainMenu />
   if (view === 'loadout') return <LoadoutScreen />
+  if (view === 'armory') return <ArmoryScreen />
 
   return (
     <div className="game-root">

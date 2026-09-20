@@ -31,6 +31,7 @@ import { tryRangedAttack } from '../combat/rangedAttack'
 import { abilityOrder } from '../../content/abilities'
 import { tickAbilityTimers, tryActivate } from '../combat/abilities'
 import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, type DirectorState } from '../director/director'
+import { applyMetaUpgrades } from '../meta/metaProgression'
 import { applyDamage } from '../combat/damage'
 import { applyUpgradesToWeapon, tickWeaponTimers, tryFire } from '../combat/weapons'
 import { resolveExplosion } from '../combat/explosions'
@@ -93,11 +94,16 @@ export class GameEngine {
   private nextWaveDelay = 0
   private events: EngineEvent[] = []
 
-  constructor(seed: number = Date.now(), startingWeaponId: string = assaultRifle.id) {
+  constructor(
+    seed: number = Date.now(),
+    startingWeaponId: string = assaultRifle.id,
+    metaUpgradeRanks: Record<string, number> = {},
+  ) {
     this.rng = mulberry32(seed)
     this.map = pickMap(this.rng)
     const weaponId = weapons[startingWeaponId] ? startingWeaponId : assaultRifle.id
     this.player = createPlayer({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 }, weaponOrder, weaponId, abilityOrder)
+    applyMetaUpgrades(this.player, metaUpgradeRanks)
     startWave(this.wave, 1)
     this.maybeSpawnBoss(1)
   }

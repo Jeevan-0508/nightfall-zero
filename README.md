@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/jk-brand-banner.png" alt="Jeevan Siddhabhaktula — Risk. Governance. AI." width="280"></p>
+<p align="center"><img src="assets/jk-brand-banner.png" alt="Jeevan Siddhabhaktula: Risk. Governance. AI." width="280"></p>
 
 <div align="center">
 
@@ -18,24 +18,25 @@
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![tests](https://img.shields.io/badge/tests-83_passing-22c55e?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-94_passing-22c55e?style=for-the-badge)
 ![Pages](https://img.shields.io/badge/GitHub%20Pages-LIVE-22c55e?style=for-the-badge&logo=github)
 ![MIT](https://img.shields.io/badge/Licence-MIT-38bdf8?style=for-the-badge)
 
 <table>
-<tr><td align="center">🎮</td><td align="center">🔫</td><td align="center">🗺️</td><td align="center">🧠</td></tr>
+<tr><td align="center">🎮</td><td align="center">🔫</td><td align="center">🗺️</td><td align="center">🧠</td><td align="center">🔧</td></tr>
 <tr>
 <td align="center"><a href="https://jeevan-0508.github.io/nightfall-zero/"><b>PLAY NOW</b></a></td>
 <td align="center"><a href="#the-arsenal"><b>8 WEAPONS</b></a></td>
 <td align="center"><a href="#the-maps"><b>3 MAPS</b></a></td>
 <td align="center"><a href="#the-adaptive-director"><b>ADAPTIVE AI</b></a></td>
+<td align="center"><a href="#the-armory"><b>THE ARMORY</b></a></td>
 </tr>
-<tr><td align="center">Browser, no install</td><td align="center">Pick your rack</td><td align="center">Circles, not corridors</td><td align="center">Watches how you play</td></tr>
+<tr><td align="center">Browser, no install</td><td align="center">Pick your rack</td><td align="center">Circles, not corridors</td><td align="center">Watches how you play</td><td align="center">Scrap carries over</td></tr>
 </table>
 
 </div>
 
-**[Open the live game](https://jeevan-0508.github.io/nightfall-zero/)** — no download, no sign-in, WASD and a mouse.
+**[Open the live game](https://jeevan-0508.github.io/nightfall-zero/)**, no download, no sign-in, WASD and a mouse.
 
 ## ⚡ What Is This?
 
@@ -61,7 +62,8 @@ and the same inputs, and it replays byte-for-byte, which is also how every mecha
 | **E** | Overcharge (temporary fire-rate + speed boost) |
 
 Pick a starting weapon on the loadout screen, then survive. Every wave adds more enemies; every five waves, a
-boss. Level up mid-run to choose from randomized stat upgrades. There is no win condition — the score is how long
+boss. Level up mid-run to choose from randomized stat upgrades. Every run also earns scrap, spendable in the
+Armory on permanent upgrades that carry into the next one. There is no win condition, the score is how long
 you last.
 
 ## 🔫 The Arsenal
@@ -84,10 +86,10 @@ already in your hand when the wave begins.
 
 Four AI behaviors, each reading the same battlefield differently:
 
-- **Melee** — closes distance and attacks on contact
-- **Ranged** — holds distance, fires back
-- **Stalker** — cloaks and uncloaks on a timer, closing in while invisible
-- **Boss (Overlord)** — a three-attack state machine: a telegraphed ground **slam**, a locked-direction **charge**
+- **Melee**: closes distance and attacks on contact
+- **Ranged**: holds distance, fires back
+- **Stalker**: cloaks and uncloaks on a timer, closing in while invisible
+- **Boss (Overlord)**: a three-attack state machine, a telegraphed ground **slam**, a locked-direction **charge**
   dash, and a **barrage** of spread projectiles. Every attack telegraphs before it lands, on a fixed rotation, so
   reading the tell is the actual skill check.
 
@@ -99,8 +101,8 @@ enemies, the boss, and every projectile in flight.
 
 | Map | Character |
 |---|---|
-| **Crossroads** | Four pillars in a diamond around the center — open lanes, easy sightlines |
-| **Bunker** | Two solid wall segments with a single chokepoint gap — funnels every fight |
+| **Crossroads** | Four pillars in a diamond around the center; open lanes, easy sightlines |
+| **Bunker** | Two solid wall segments with a single chokepoint gap; funnels every fight |
 | **Scatter** | Six irregular rubble piles, no clean lane through any of them |
 
 ## 🧠 The Adaptive Director
@@ -110,6 +112,24 @@ spawn pacing and enemy mix in response, the same idea as Left 4 Dead's AI Direct
 It cannot spawn a boss early or skip a wave; it only leans the existing wave definitions toward more or less
 pressure.
 
+## 🔧 The Armory
+
+Every run pays out scrap: two per kill, one per second survived, ten per wave reached, boosted by the
+Scavenger's Network rank. Spend it in the Armory, reachable from the main menu, on five permanent upgrades that
+apply directly to the player created for your next run, before wave one even starts. Nothing here is a
+consumable; every rank is owned forever once bought.
+
+| Upgrade | Effect | Max Rank |
+|---|---|---|
+| **Vitality Implant** | +10 max health per rank | 5 |
+| **Plating Mod** | +10 max armor per rank | 5 |
+| **Combat Drills** | +5% weapon damage per rank | 5 |
+| **Field Conditioning** | +5% move speed per rank | 3 |
+| **Scavenger's Network** | +10% scrap earned per rank | 3 |
+
+Balance, ranks, and lifetime stats (total runs, total kills, best survival time, best wave) persist in
+`localStorage`, so they survive a page reload. Nothing else in the game does.
+
 ## 🛠 Technologies Used
 
 | Layer | Technology | Purpose |
@@ -117,9 +137,9 @@ pressure.
 | UI shell | **React 19** | Menus, loadout screen, HUD, overlays |
 | Language | **TypeScript 6** (strict) | Every entity, weapon, and AI state machine is a typed object |
 | Rendering | **Canvas 2D** (hand-rolled) | The actual game: player, enemies, projectiles, particles, obstacles |
-| State | **Zustand 5** | Menu/loadout/game-over view routing, HUD snapshot store |
+| State | **Zustand 5** | Menu/loadout/armory/game-over view routing, HUD snapshot store, `persist`-backed meta-progression |
 | Build | **Vite 8** | Dev server and production bundling |
-| Testing | **Vitest 5** (happy-dom) | 83 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
+| Testing | **Vitest 5** (happy-dom) | 94 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
 | Lint | **oxlint** | Fast, zero-config linting |
 | Runtime | **bun** | Install, dev, test, build |
 | Hosting | **GitHub Pages** | Static deploy via GitHub Actions on every push to `main` |
@@ -128,17 +148,18 @@ pressure.
 
 ```
 src/game/engine/     GameEngine orchestrator, deterministic seeded rng, shared types, vector math, particles
-src/game/entities/    Factories for player/enemy/projectile — every id counter lives here
+src/game/entities/    Factories for player/enemy/projectile; every id counter lives here
 src/game/combat/      Damage resolution, weapon firing/reload, explosions, ranged attacks, abilities
 src/game/ai/          Enemy behavior state machines, boss attack rotation
 src/game/collision/   Circle-circle and circle-obstacle intersection + push-out resolution
 src/game/waves/       Spawn queueing, obstacle-aware spawn placement, wave completion
 src/game/director/    Adaptive difficulty director
 src/game/render/      Canvas 2D draw pipeline
-src/content/          Data only: weapons, enemies, waves, upgrades, abilities, maps
-src/store/            Zustand stores: game view/loadout, HUD snapshot
+src/game/meta/        Pure meta-progression logic: scrap payout, upgrade cost curve, applying owned ranks
+src/content/          Data only: weapons, enemies, waves, upgrades, abilities, maps, meta-upgrades
+src/store/            Zustand stores: game view/loadout/armory, HUD snapshot, persisted meta-progression
 src/ui/               React components: canvas host, HUD, menus, overlays
-src/tests/            83 tests, one file per subsystem, testing pure functions directly
+src/tests/            94 tests, one file per subsystem, testing pure functions directly
 ```
 
 The engine is a plain class with no framework dependency: `GameEngine.update(dt, input)` advances one frame and
@@ -153,7 +174,7 @@ git clone https://github.com/Jeevan-0508/nightfall-zero.git
 cd nightfall-zero
 bun install
 bun run dev         # http://localhost:5173/nightfall-zero/
-bun run test        # 83 tests
+bun run test        # 94 tests
 bun run typecheck
 bun run build
 ```
@@ -166,8 +187,8 @@ Requires [bun](https://bun.sh).
   boss definition; only the Overlord ships today.
 - **No pickups.** Every weapon and ability is available from the first frame. The loadout screen picks what you
   start equipped with, not what you have access to.
-- **No persistence.** Nothing survives a page reload — no save file, no meta-progression, no unlocks carried
-  between runs. Every run starts from the same baseline.
+- **One save slot.** The Armory's scrap, upgrade ranks, and lifetime stats persist in `localStorage`, but there
+  is only one save, no cloud sync, and no way to export or reset it from the UI.
 - **No sound files.** Every effect is a synthesized Web Audio oscillator, not a mixed sample, so combat audio is
   functional rather than produced.
 
