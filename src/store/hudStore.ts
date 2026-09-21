@@ -3,6 +3,7 @@ import type { HudSnapshot } from '../game/engine/types'
 
 const initialSnapshot: HudSnapshot = {
   status: 'playing',
+  activeSynergies: [],
   health: 100,
   maxHealth: 100,
   armor: 50,

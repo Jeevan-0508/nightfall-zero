@@ -2,8 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { GameEngine } from '../game/engine/GameEngine'
 import { createEnemy } from '../game/entities/factories'
 import { SHIELD_CAPACITY } from '../game/combat/eliteModifiers'
+import { CRIT_SYNERGY_DAMAGE_MULTIPLIER } from '../game/combat/synergies'
 import { walker, brute, spitter } from '../content/enemies'
+import { pistol } from '../content/weapons'
+import { upgradePool } from '../content/upgrades'
 import type { InputState } from '../game/engine/types'
+
+function takeUpgrade(engine: GameEngine, id: string): void {
+  const option = upgradePool.find((o) => o.id === id)!
+  option.apply(engine.player)
+  engine.chosenUpgrades.push(option)
+}
 
 function idleInput(overrides: Partial<InputState> = {}): InputState {
   return { up: false, down: false, left: false, right: false, aimX: 0, aimY: 0, firing: false, switchTo: null, abilityTrigger: null, ...overrides }
@@ -164,5 +173,95 @@ describe('elite modifiers integration', () => {
 
     expect(target.health).toBe(target.maxHealth)
     expect(target.shieldRemaining).toBeLessThan(SHIELD_CAPACITY)
+  })
+})
+
+describe('build synergies integration', () => {
+  it('a crit-themed build below the stacking threshold gets no synergy bonus', () => {
+    const engine = new GameEngine(50, 'pistol')
+    takeUpgrade(engine, 'crit')
+    takeUpgrade(engine, 'huntersInstinct')
+
+    expect(engine.themeStacks.crit).toBe(2)
+    expect(engine.weaponDef.criticalMultiplier).toBeCloseTo(pistol.criticalMultiplier * engine.player.upgrades.critDamageMultiplier, 5)
+  })
+
+  it('a fully stacked crit build (3 crit-themed upgrades) unlocks the crit synergy bonus on the real weapon stats', () => {
+    const engine = new GameEngine(50, 'pistol')
+    takeUpgrade(engine, 'crit')
+    takeUpgrade(engine, 'huntersInstinct')
+    const critMultiplierBeforeThreshold = engine.weaponDef.criticalMultiplier
+
+    takeUpgrade(engine, 'deadEye')
+    expect(engine.themeStacks.crit).toBe(3)
+
+    const expectedWithoutSynergy = critMultiplierBeforeThreshold * engine.player.upgrades.critDamageMultiplier
+    expect(engine.weaponDef.criticalMultiplier).toBeCloseTo(expectedWithoutSynergy * CRIT_SYNERGY_DAMAGE_MULTIPLIER, 5)
+  })
+
+  it('a fully stacked mobility build moves the player further in the same tick than a partial one', () => {
+    const partial = new GameEngine(51)
+    takeUpgrade(partial, 'moveSpeed')
+    takeUpgrade(partial, 'phantomStep')
+    partial.player.position = { x: 500, y: 500 }
+    partial.update(1 / 60, { up: false, down: true, left: false, right: false, aimX: 0, aimY: 0, firing: false, switchTo: null, abilityTrigger: null })
+    const partialDistance = partial.player.position.y - 500
+
+    const full = new GameEngine(51)
+    takeUpgrade(full, 'moveSpeed')
+    takeUpgrade(full, 'phantomStep')
+    takeUpgrade(full, 'huntersInstinct')
+    full.player.position = { x: 500, y: 500 }
+    full.update(1 / 60, { up: false, down: true, left: false, right: false, aimX: 0, aimY: 0, firing: false, switchTo: null, abilityTrigger: null })
+    const fullDistance = full.player.position.y - 500
+
+    expect(full.themeStacks.mobility).toBe(3)
+    expect(fullDistance).toBeGreaterThan(partialDistance)
+  })
+
+  it('a fully stacked fire build applies a stronger burn than wielding the flamethrower alone', () => {
+    const plain = new GameEngine(52, 'flamethrower')
+    plain.player.position = { x: 100, y: 100 }
+    const plainTarget = createEnemy(brute, { x: 140, y: 100 })
+    plain.enemyList.push(plainTarget)
+    const plainInput = { up: false, down: false, left: false, right: false, aimX: 140, aimY: 100, firing: true, switchTo: null, abilityTrigger: null }
+    for (let i = 0; i < 10 && !plainTarget.statuses.some((s) => s.type === 'burn'); i++) {
+      plain.update(1 / 60, plainInput)
+    }
+    const plainBurn = plainTarget.statuses.find((s) => s.type === 'burn')!.magnitude
+
+    const stacked = new GameEngine(52, 'flamethrower')
+    takeUpgrade(stacked, 'accelerant')
+    takeUpgrade(stacked, 'slowBurn')
+    stacked.player.position = { x: 100, y: 100 }
+    const stackedTarget = createEnemy(brute, { x: 140, y: 100 })
+    stacked.enemyList.push(stackedTarget)
+    for (let i = 0; i < 10 && !stackedTarget.statuses.some((s) => s.type === 'burn'); i++) {
+      stacked.update(1 / 60, plainInput)
+    }
+    const stackedBurn = stackedTarget.statuses.find((s) => s.type === 'burn')!.magnitude
+
+    expect(stacked.themeStacks.fire).toBe(3)
+    expect(stackedBurn).toBeGreaterThan(plainBurn)
+  })
+
+  it('a fully stacked explosive build damages a bystander that a base-radius rocket would miss', () => {
+    const engine = new GameEngine(53, 'rocket-launcher')
+    takeUpgrade(engine, 'biggerBoom')
+    takeUpgrade(engine, 'shrapnelLoad')
+    engine.player.position = { x: 100, y: 100 }
+
+    const target = createEnemy(brute, { x: 300, y: 100 })
+    const bystander = createEnemy(walker, { x: 300, y: 200 }) // just past the un-boosted 90-radius splash
+    engine.enemyList.push(target, bystander)
+    const bystanderStartHealth = bystander.health
+
+    const input = { up: false, down: false, left: false, right: false, aimX: 300, aimY: 100, firing: true, switchTo: null, abilityTrigger: null }
+    for (let i = 0; i < 180 && bystander.health === bystanderStartHealth; i++) {
+      engine.update(1 / 60, input)
+    }
+
+    expect(engine.themeStacks.explosive).toBe(3)
+    expect(bystander.health).toBeLessThan(bystanderStartHealth)
   })
 })

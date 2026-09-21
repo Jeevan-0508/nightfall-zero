@@ -26,6 +26,9 @@ export function HUD() {
         <div className="hud-map">{snapshot.mapName.toUpperCase()} &middot; {snapshot.modeName.toUpperCase()}</div>
         <div className="hud-level">LV {snapshot.level} &middot; {snapshot.kills} KILLS</div>
         {snapshot.combo >= 2 && <div className="hud-combo">&times;{snapshot.combo} COMBO</div>}
+        {snapshot.activeSynergies.length > 0 && (
+          <div className="hud-synergy">{snapshot.activeSynergies.map((t) => t.toUpperCase()).join(' + ')} SYNERGY</div>
+        )}
       </div>
 
       <div className="hud-minimap">

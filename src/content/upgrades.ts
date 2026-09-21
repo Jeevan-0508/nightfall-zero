@@ -1,6 +1,7 @@
 import type { Player } from '../game/engine/types'
 import type { Rng } from '../game/engine/rng'
 import { rangeFloat } from '../game/engine/rng'
+import type { UpgradeTheme } from '../game/combat/synergies'
 
 export type UpgradeRarity = 'common' | 'rare' | 'epic' | 'legendary'
 
@@ -9,6 +10,8 @@ export interface UpgradeOption {
   name: string
   description: string
   rarity: UpgradeRarity
+  /** Build themes this upgrade counts toward (see combat/synergies.ts). Most upgrades are untagged. */
+  theme?: UpgradeTheme[]
   apply: (player: Player) => void
 }
 
@@ -49,6 +52,7 @@ export const upgradePool: UpgradeOption[] = [
     name: "Killer's Eye",
     description: '+8% critical chance',
     rarity: 'common',
+    theme: ['crit'],
     apply: (p) => {
       p.upgrades.critChanceBonus += 0.08
     },
@@ -58,6 +62,7 @@ export const upgradePool: UpgradeOption[] = [
     name: 'Light Footwork',
     description: '+10% move speed',
     rarity: 'common',
+    theme: ['mobility'],
     apply: (p) => {
       p.upgrades.moveSpeedMultiplier *= 1.1
     },
@@ -118,6 +123,7 @@ export const upgradePool: UpgradeOption[] = [
     name: "Hunter's Instinct",
     description: '+15% critical chance, +15% move speed',
     rarity: 'rare',
+    theme: ['crit', 'mobility'],
     apply: (p) => {
       p.upgrades.critChanceBonus += 0.15
       p.upgrades.moveSpeedMultiplier *= 1.15
@@ -138,6 +144,7 @@ export const upgradePool: UpgradeOption[] = [
     name: 'Phantom Step',
     description: '+25% move speed, +25% XP gained',
     rarity: 'epic',
+    theme: ['mobility'],
     apply: (p) => {
       p.upgrades.moveSpeedMultiplier *= 1.25
       p.upgrades.xpGainMultiplier *= 1.25
@@ -148,9 +155,70 @@ export const upgradePool: UpgradeOption[] = [
     name: 'Dead Eye',
     description: '+25% critical chance, +75% critical damage',
     rarity: 'legendary',
+    theme: ['crit'],
     apply: (p) => {
       p.upgrades.critChanceBonus += 0.25
       p.upgrades.critDamageMultiplier *= 1.75
+    },
+  },
+  {
+    id: 'accelerant',
+    name: 'Accelerant',
+    description: '+25% burn damage',
+    rarity: 'common',
+    theme: ['fire'],
+    apply: (p) => {
+      p.upgrades.burnDamageMultiplier *= 1.25
+    },
+  },
+  {
+    id: 'slowBurn',
+    name: 'Slow Burn',
+    description: '+50% burn duration',
+    rarity: 'rare',
+    theme: ['fire'],
+    apply: (p) => {
+      p.upgrades.burnDurationMultiplier *= 1.5
+    },
+  },
+  {
+    id: 'biggerBoom',
+    name: 'Bigger Boom',
+    description: '+20% explosion radius',
+    rarity: 'common',
+    theme: ['explosive'],
+    apply: (p) => {
+      p.upgrades.explosionRadiusMultiplier *= 1.2
+    },
+  },
+  {
+    id: 'shrapnelLoad',
+    name: 'Shrapnel Load',
+    description: '+25% explosion damage',
+    rarity: 'rare',
+    theme: ['explosive'],
+    apply: (p) => {
+      p.upgrades.explosionDamageMultiplier *= 1.25
+    },
+  },
+  {
+    id: 'capacitor',
+    name: 'Capacitor',
+    description: '+1 projectile pierce',
+    rarity: 'common',
+    theme: ['energy'],
+    apply: (p) => {
+      p.upgrades.pierceBonus += 1
+    },
+  },
+  {
+    id: 'overchargedCoils',
+    name: 'Overcharged Coils',
+    description: '+15% projectile speed',
+    rarity: 'rare',
+    theme: ['energy'],
+    apply: (p) => {
+      p.upgrades.projectileSpeedMultiplier *= 1.15
     },
   },
   {

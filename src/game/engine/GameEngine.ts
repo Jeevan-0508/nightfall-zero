@@ -55,6 +55,15 @@ import {
 } from '../combat/eliteModifiers'
 import { applyUpgradesToWeapon, tickWeaponTimers, tryFire } from '../combat/weapons'
 import { resolveExplosion } from '../combat/explosions'
+import {
+  getThemeStacks,
+  getFireSynergyMultiplier,
+  getMobilitySynergyMultiplier,
+  getExplosiveSynergyDamageMultiplier,
+  getExplosiveSynergyRadiusMultiplier,
+  isSynergyActive,
+  type UpgradeTheme,
+} from '../combat/synergies'
 import { circleIntersectsAnyObstacle, circlesIntersect, resolveObstacleCollisions } from '../collision/collision'
 import {
   createWaveState,
@@ -139,9 +148,15 @@ export class GameEngine {
     this.maybeSpawnBoss(1)
   }
 
+  /** Build-theme stacks derived from every upgrade taken so far plus the currently equipped weapon
+   * (see combat/synergies.ts) - cheap to recompute on demand, so there is nothing to keep in sync. */
+  get themeStacks(): ReturnType<typeof getThemeStacks> {
+    return getThemeStacks(this.chosenUpgrades, this.player.equippedWeaponId)
+  }
+
   get weaponDef(): WeaponDefinition {
     const base = weapons[this.player.equippedWeaponId] ?? assaultRifle
-    const upgraded = applyUpgradesToWeapon(base, this.player.upgrades)
+    const upgraded = applyUpgradesToWeapon(base, this.player.upgrades, this.themeStacks)
     const effective = { ...upgraded, damage: upgraded.damage * this.mode.playerDamageMultiplier }
     if (this.isOverchargeActive()) {
       return { ...effective, fireRate: effective.fireRate * OVERCHARGE_FIRE_RATE_MULT }
@@ -245,7 +260,10 @@ export class GameEngine {
     }
 
     const speed =
-      PLAYER_SPEED * this.player.upgrades.moveSpeedMultiplier * (this.isOverchargeActive() ? OVERCHARGE_SPEED_MULT : 1)
+      PLAYER_SPEED *
+      this.player.upgrades.moveSpeedMultiplier *
+      getMobilitySynergyMultiplier(this.themeStacks) *
+      (this.isOverchargeActive() ? OVERCHARGE_SPEED_MULT : 1)
     this.player.velocity = { x: dx * speed, y: dy * speed }
     const moved = {
       x: clamp(this.player.position.x + dx * speed * dt, this.player.radius, ARENA_WIDTH - this.player.radius),
@@ -375,7 +393,10 @@ export class GameEngine {
   }
 
   private detonateGrenade(g: Grenade): void {
-    const result = resolveExplosion(g.position, g.explosionRadius, g.damage, this.enemyList, enemyDefs, this.particles, this.rng)
+    const stacks = this.themeStacks
+    const radius = g.explosionRadius * this.player.upgrades.explosionRadiusMultiplier * getExplosiveSynergyRadiusMultiplier(stacks)
+    const damage = g.damage * this.player.upgrades.explosionDamageMultiplier * getExplosiveSynergyDamageMultiplier(stacks)
+    const result = resolveExplosion(g.position, radius, damage, this.enemyList, enemyDefs, this.particles, this.rng)
     this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
     this.pushEvent('explosion')
     for (const enemy of result.enemiesKilled) {
@@ -587,7 +608,11 @@ export class GameEngine {
     this.screenShake = Math.max(this.screenShake, justBroke ? SCREEN_SHAKE_EXPLOSION * 0.5 : SCREEN_SHAKE_HIT)
     this.pushEvent(projectile.isCrit ? 'critHit' : 'hit')
     if (!died) {
-      if (projectile.weaponId === 'flamethrower') applyStatus(enemy, 'burn', BURN_DURATION, BURN_DPS)
+      if (projectile.weaponId === 'flamethrower') {
+        const duration = BURN_DURATION * this.player.upgrades.burnDurationMultiplier
+        const magnitude = BURN_DPS * this.player.upgrades.burnDamageMultiplier * getFireSynergyMultiplier(this.themeStacks)
+        applyStatus(enemy, 'burn', duration, magnitude)
+      }
       if (projectile.isCrit) applyStatus(enemy, 'slow', SLOW_DURATION, SLOW_MULTIPLIER)
     }
     this.finalizeEnemyDeath(enemy, def, died)
@@ -622,10 +647,15 @@ export class GameEngine {
 
   private applyExplosion(projectile: Projectile, directHitEnemyId: number): void {
     if (!projectile.explosionRadius) return
+    const stacks = this.themeStacks
+    const radius =
+      projectile.explosionRadius * this.player.upgrades.explosionRadiusMultiplier * getExplosiveSynergyRadiusMultiplier(stacks)
+    const damage =
+      projectile.damage * 0.6 * this.player.upgrades.explosionDamageMultiplier * getExplosiveSynergyDamageMultiplier(stacks)
     const result = resolveExplosion(
       projectile.position,
-      projectile.explosionRadius,
-      projectile.damage * 0.6,
+      radius,
+      damage,
       this.enemyList,
       enemyDefs,
       this.particles,
@@ -714,8 +744,11 @@ export class GameEngine {
     const state = this.weaponState
     const weapon = this.weaponDef
     const bossEnemy = this.enemyList.find((e) => e.alive && enemyDefs[e.defId]?.behavior === 'boss')
+    const stacks = this.themeStacks
+    const activeSynergies = (Object.keys(stacks) as UpgradeTheme[]).filter((theme) => isSynergyActive(stacks, theme))
     return {
       status: this.status,
+      activeSynergies,
       health: this.player.health,
       maxHealth: this.player.maxHealth,
       armor: this.player.armor,

@@ -694,6 +694,15 @@ button {
   50% { transform: scale(1.08); }
 }
 
+.hud-synergy {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #7fe0ff;
+  text-shadow: 0 0 8px rgba(127, 224, 255, 0.7);
+  animation: hud-combo-pulse 0.5s ease-in-out infinite;
+}
+
 .hud-map {
   font-size: 11px;
   letter-spacing: 1.5px;

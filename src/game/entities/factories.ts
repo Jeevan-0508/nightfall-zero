@@ -49,6 +49,12 @@ export function createDefaultUpgrades(): PlayerUpgrades {
     moveSpeedMultiplier: 1,
     xpGainMultiplier: 1,
     critDamageMultiplier: 1,
+    burnDamageMultiplier: 1,
+    burnDurationMultiplier: 1,
+    explosionDamageMultiplier: 1,
+    explosionRadiusMultiplier: 1,
+    projectileSpeedMultiplier: 1,
+    pierceBonus: 0,
   }
 }
 

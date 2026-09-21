@@ -78,6 +78,12 @@ export interface PlayerUpgrades {
   moveSpeedMultiplier: number
   xpGainMultiplier: number
   critDamageMultiplier: number
+  burnDamageMultiplier: number
+  burnDurationMultiplier: number
+  explosionDamageMultiplier: number
+  explosionRadiusMultiplier: number
+  projectileSpeedMultiplier: number
+  pierceBonus: number
 }
 
 export interface AbilityDefinition {
@@ -309,6 +315,7 @@ export interface DirectorDebugInfo {
 
 export interface HudSnapshot {
   status: GameStatus
+  activeSynergies: string[]
   health: number
   maxHealth: number
   armor: number

@@ -4,6 +4,8 @@ import type { PlayerUpgrades, Projectile, WeaponDefinition, WeaponState } from '
 import type { Vector2 } from '../engine/vector'
 import { fromAngle } from '../engine/vector'
 import { rollWeaponDamage } from './damage'
+import type { UpgradeTheme } from './synergies'
+import { EMPTY_THEME_STACKS, getCritSynergyMultiplier, getEnergySynergyPierceBonus } from './synergies'
 
 let projectileIdCounter = 0
 
@@ -12,15 +14,22 @@ export interface FireResult {
   projectiles: Projectile[]
 }
 
-/** Folds the player's permanent run upgrades into a weapon's base stats. */
-export function applyUpgradesToWeapon(base: WeaponDefinition, upgrades: PlayerUpgrades): WeaponDefinition {
+/** Folds the player's permanent run upgrades, and any active build synergies, into a weapon's base stats. */
+export function applyUpgradesToWeapon(
+  base: WeaponDefinition,
+  upgrades: PlayerUpgrades,
+  themeStacks: Record<UpgradeTheme, number> = EMPTY_THEME_STACKS,
+): WeaponDefinition {
+  const pierceBonus = upgrades.pierceBonus + getEnergySynergyPierceBonus(themeStacks)
   return {
     ...base,
     damage: base.damage * upgrades.damageMultiplier,
     fireRate: base.fireRate * upgrades.fireRateMultiplier,
     reloadTime: base.reloadTime / upgrades.reloadSpeedMultiplier,
     criticalChance: Math.min(0.95, base.criticalChance + upgrades.critChanceBonus),
-    criticalMultiplier: base.criticalMultiplier * upgrades.critDamageMultiplier,
+    criticalMultiplier: base.criticalMultiplier * upgrades.critDamageMultiplier * getCritSynergyMultiplier(themeStacks),
+    bulletSpeed: base.bulletSpeed * upgrades.projectileSpeedMultiplier,
+    pierceCount: pierceBonus > 0 ? (base.pierceCount ?? 0) + pierceBonus : base.pierceCount,
   }
 }
 
