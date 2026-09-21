@@ -11,6 +11,7 @@ function formatTime(seconds: number): string {
 
 export function HUD() {
   const snapshot = useHudStore((s) => s.snapshot)
+  const perf = useHudStore((s) => s.perf)
   const debugPanelOpen = useGameStore((s) => s.debugPanelOpen)
   const autoAim = useSettingsStore((s) => s.autoAim)
   const setAutoAim = useSettingsStore((s) => s.setAutoAim)
@@ -144,6 +145,11 @@ export function HUD() {
 
       {debugPanelOpen && (
         <div className="hud-debug-panel">
+          <div className="hud-debug-title">PERFORMANCE</div>
+          <div>fps {perf.fps.toFixed(0)}</div>
+          <div>engine {perf.engineMs.toFixed(2)}ms / render {perf.renderMs.toFixed(2)}ms</div>
+          <div>enemies {perf.enemyCount} / projectiles {perf.projectileCount} / particles {perf.particleCount}</div>
+          <div>hud {perf.hudHz.toFixed(1)}Hz</div>
           <div className="hud-debug-title">DIRECTOR</div>
           <div>intensity {snapshot.debug.intensity.toFixed(2)}{snapshot.debug.calmActive ? ' (relief)' : ''}</div>
           <div>profile {snapshot.debug.profile}</div>

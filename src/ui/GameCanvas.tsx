@@ -62,6 +62,7 @@ const WEAPON_SWITCH_KEYS: Record<string, string> = {
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const setSnapshot = useHudStore((s) => s.setSnapshot)
+  const setPerf = useHudStore((s) => s.setPerf)
   const endRun = useGameStore((s) => s.endRun)
   const setPendingUpgrades = useGameStore((s) => s.setPendingUpgrades)
   const selectedWeaponId = useGameStore((s) => s.selectedWeaponId)
@@ -195,6 +196,12 @@ export function GameCanvas() {
     let deathStartTime: number | null = null
     let lastAutosaveTs = performance.now()
     let lastHudSnapshotTs = 0
+    let fpsEma = 60
+    let engineMsEma = 0
+    let renderMsEma = 0
+    let hudSnapshotsThisWindow = 0
+    let hudHzWindowStart = performance.now()
+    let hudHzValue = 0
 
     function tick(now: number) {
       const dt = Math.min(0.05, (now - lastTime) / 1000)
@@ -215,7 +222,10 @@ export function GameCanvas() {
         }
       }
 
+      const engineT0 = performance.now()
       engine.update(dt, input)
+      engineMsEma = engineMsEma * 0.9 + (performance.now() - engineT0) * 0.1
+      fpsEma = fpsEma * 0.9 + (dt > 0 ? 1 / dt : fpsEma) * 0.1
       input.switchTo = null
       input.abilityTrigger = null
       for (const indicator of hitIndicators) indicator.alpha -= dt * 1.6
@@ -232,13 +242,32 @@ export function GameCanvas() {
         lastAutosaveTs = now
       }
 
+      const renderT0 = performance.now()
       draw(ctx!, engine, { hitIndicators, deathProgress, reducedMotion, shakeIntensity: screenShakeIntensity, colorblindMode })
+      renderMsEma = renderMsEma * 0.9 + (performance.now() - renderT0) * 0.1
       // Gameplay/render stay at 60fps above; the HUD (health bar, minimap, counters) only needs to
       // repaint a few times a second, so its React/zustand write is throttled separately here to stop
       // every subscribed HUD component re-rendering on every animation frame.
       if (now - lastHudSnapshotTs >= HUD_SNAPSHOT_INTERVAL_MS) {
         lastHudSnapshotTs = now
         setSnapshot(engine.getHudSnapshot())
+        hudSnapshotsThisWindow += 1
+        if (now - hudHzWindowStart >= 1000) {
+          hudHzValue = hudSnapshotsThisWindow / ((now - hudHzWindowStart) / 1000)
+          hudSnapshotsThisWindow = 0
+          hudHzWindowStart = now
+        }
+        if (useGameStore.getState().debugPanelOpen) {
+          setPerf({
+            fps: fpsEma,
+            engineMs: engineMsEma,
+            renderMs: renderMsEma,
+            enemyCount: engine.enemyList.filter((e) => e.alive).length,
+            projectileCount: engine.projectiles.length + engine.enemyProjectiles.length,
+            particleCount: engine.particles.length,
+            hudHz: hudHzValue,
+          })
+        }
       }
 
       if (engine.pendingUpgradeChoices !== lastUpgradeChoices) {
@@ -355,6 +384,7 @@ export function GameCanvas() {
     }
   }, [
     setSnapshot,
+    setPerf,
     endRun,
     setPendingUpgrades,
     selectedWeaponId,

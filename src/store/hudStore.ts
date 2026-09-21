@@ -42,12 +42,39 @@ const initialSnapshot: HudSnapshot = {
   },
 }
 
+/** Dev-only frame/engine timing, read by the existing debug panel. Kept separate from
+ * HudSnapshot (gameplay state) since this is purely a UI/rendering concern the engine has
+ * no business knowing about. */
+export interface PerfStats {
+  fps: number
+  engineMs: number
+  renderMs: number
+  enemyCount: number
+  projectileCount: number
+  particleCount: number
+  hudHz: number
+}
+
+const initialPerf: PerfStats = {
+  fps: 0,
+  engineMs: 0,
+  renderMs: 0,
+  enemyCount: 0,
+  projectileCount: 0,
+  particleCount: 0,
+  hudHz: 0,
+}
+
 interface HudStore {
   snapshot: HudSnapshot
   setSnapshot: (snapshot: HudSnapshot) => void
+  perf: PerfStats
+  setPerf: (perf: PerfStats) => void
 }
 
 export const useHudStore = create<HudStore>((set) => ({
   snapshot: initialSnapshot,
   setSnapshot: (snapshot) => set({ snapshot }),
+  perf: initialPerf,
+  setPerf: (perf) => set({ perf }),
 }))
