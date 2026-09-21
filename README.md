@@ -223,7 +223,7 @@ Balance, ranks, and lifetime stats (total runs, total kills, best survival time,
 | Rendering | **Canvas 2D** (hand-rolled) | The actual game: player, enemies, projectiles, particles, obstacles |
 | State | **Zustand 5** | Menu/loadout/armory/game-over view routing, HUD snapshot store, `persist`-backed meta-progression |
 | Build | **Vite 8** | Dev server and production bundling |
-| Testing | **Vitest 5** (happy-dom) | 258 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
+| Testing | **Vitest 5** (happy-dom) | 330 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
 | Lint | **oxlint** | Fast, zero-config linting |
 | Runtime | **bun** | Install, dev, test, build |
 | Hosting | **GitHub Pages** | Static deploy via GitHub Actions on every push to `main` |
@@ -244,7 +244,7 @@ src/game/meta/        Pure meta-progression logic: scrap payout, upgrade cost cu
 src/content/          Data only: weapons, enemies, waves, upgrades, abilities, maps, meta-upgrades
 src/store/            Zustand stores: game view/loadout/armory, HUD snapshot, persisted meta-progression
 src/ui/               React components: canvas host, HUD, menus, overlays
-src/tests/            258 tests, one file per subsystem, testing pure functions directly
+src/tests/            330 tests, one file per subsystem, testing pure functions directly
 ```
 
 The engine is a plain class with no framework dependency: `GameEngine.update(dt, input)` advances one frame and
@@ -259,7 +259,7 @@ git clone https://github.com/Jeevan-0508/nightfall-zero.git
 cd nightfall-zero
 bun install
 bun run dev         # http://localhost:5173/nightfall-zero/
-bun run test        # 258 tests
+bun run test        # 330 tests
 bun run typecheck
 bun run build
 ```
