@@ -53,8 +53,11 @@ export function HUD() {
       </div>
 
       {snapshot.boss && (
-        <div className="hud-boss">
+        <div className={`hud-boss hud-boss-${snapshot.boss.stage}`}>
           <div className="hud-boss-name">
+            {snapshot.boss.stage !== 'hunt' && (
+              <span className="hud-boss-stage">{snapshot.boss.stage.toUpperCase()}</span>
+            )}
             {snapshot.boss.name}
             {snapshot.boss.attackTelegraph && (
               <span className="hud-boss-telegraph">{snapshot.boss.attackTelegraph.toUpperCase()}</span>
@@ -66,6 +69,13 @@ export function HUD() {
               style={{ width: `${Math.max(0, (snapshot.boss.health / snapshot.boss.maxHealth) * 100)}%` }}
             />
           </div>
+        </div>
+      )}
+
+      {snapshot.bossEntrance && (
+        <div className="hud-boss-entrance">
+          <div className="hud-boss-entrance-name">{snapshot.bossEntrance.name}</div>
+          <div className="hud-boss-entrance-sub">APPROACHING</div>
         </div>
       )}
 

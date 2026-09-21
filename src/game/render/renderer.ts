@@ -1,6 +1,6 @@
 import type { GameEngine } from '../engine/GameEngine'
 import { ARENA_HEIGHT, ARENA_WIDTH } from '../engine/types'
-import type { Enemy, EnemyDefinition } from '../engine/types'
+import type { BossStage, Enemy, EnemyDefinition } from '../engine/types'
 import { SHIELD_CAPACITY } from '../combat/eliteModifiers'
 import { enemies as enemyDefs } from '../../content/enemies'
 
@@ -702,7 +702,7 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
     }
 
     if (def.behavior === 'boss') {
-      drawBossAura(ctx, enemy.defId, def.radius, engine.stats.survivalTime)
+      drawBossAura(ctx, enemy.defId, def.radius, engine.stats.survivalTime, enemy.bossStage)
     }
     if (enemy.elite && def.behavior !== 'boss') {
       drawEliteHalo(ctx, def.radius, engine.stats.survivalTime)
@@ -837,13 +837,22 @@ function drawEliteHalo(ctx: CanvasRenderingContext2D, radius: number, t: number)
   ctx.stroke()
 }
 
-function drawBossAura(ctx: CanvasRenderingContext2D, defId: string, radius: number, t: number): void {
-  const pulse = 0.5 + Math.sin(t * 2.4) * 0.5
-  const auraColor = defId === 'overlord' ? `rgba(201, 162, 39, ${0.15 + pulse * 0.1})` : `rgba(201, 74, 39, ${0.18 + pulse * 0.12})`
+/** Aura escalates with the boss's HP-threshold stage: faster pulse, thicker ring, and a shift
+ * toward red as it approaches enraged - readable at a glance without needing to watch the HP bar. */
+function drawBossAura(ctx: CanvasRenderingContext2D, defId: string, radius: number, t: number, stage: BossStage): void {
+  const pulseSpeed = stage === 'enraged' ? 5 : stage === 'control' ? 3.4 : 2.4
+  const pulse = 0.5 + Math.sin(t * pulseSpeed) * 0.5
+  const [baseR, baseG, baseB] = defId === 'overlord' ? [201, 162, 39] : [201, 74, 39]
+  const enrageBlend = stage === 'enraged' ? 0.6 : stage === 'control' ? 0.25 : 0
+  const r = Math.round(baseR + (255 - baseR) * enrageBlend)
+  const g = Math.round(baseG * (1 - enrageBlend))
+  const b = Math.round(baseB * (1 - enrageBlend))
+  const alphaBase = stage === 'enraged' ? 0.26 : stage === 'control' ? 0.2 : 0.15
+  const alphaPulse = stage === 'enraged' ? 0.16 : stage === 'control' ? 0.13 : 0.1
   ctx.beginPath()
   ctx.arc(0, 0, radius + 14 + pulse * 5, 0, Math.PI * 2)
-  ctx.strokeStyle = auraColor
-  ctx.lineWidth = 4
+  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alphaBase + pulse * alphaPulse})`
+  ctx.lineWidth = stage === 'enraged' ? 6 : stage === 'control' ? 5 : 4
   ctx.stroke()
 }
 

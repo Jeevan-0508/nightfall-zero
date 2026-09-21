@@ -113,6 +113,7 @@ export function createEnemy(
     cloaked: false,
     phaseTimer: def.behavior === 'stalker' ? (def.visibleDuration ?? 2.2) : 0,
     bossPhase: 'idle',
+    bossStage: 'hunt',
     bossAttackId: null,
     bossTimer: def.behavior === 'boss' ? (def.bossAttackInterval ?? 3.5) : 0,
     bossLockedDir: { x: 0, y: 0 },

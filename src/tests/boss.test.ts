@@ -3,7 +3,7 @@ import { GameEngine } from '../game/engine/GameEngine'
 import { assaultRifle } from '../content/weapons'
 import { createEnemy, createPlayer } from '../game/entities/factories'
 import { overlord, executioner } from '../content/enemies'
-import { updateBoss } from '../game/ai/bossAI'
+import { updateBoss, getBossStage } from '../game/ai/bossAI'
 import type { InputState } from '../game/engine/types'
 
 function idleInput(overrides: Partial<InputState> = {}): InputState {
@@ -197,5 +197,88 @@ describe('GameEngine boss integration', () => {
     forceWaveComplete(engine) // -> wave 5
     forceWaveComplete(engine) // -> wave 6, second boss encounter
     expect(engine.enemyList.some((e) => e.defId === executioner.id)).toBe(true)
+  })
+})
+
+describe('getBossStage', () => {
+  it('is hunt above 66% health, control between 33-66%, and enraged at or below 33%', () => {
+    expect(getBossStage(1)).toBe('hunt')
+    expect(getBossStage(0.67)).toBe('hunt')
+    expect(getBossStage(0.66)).toBe('control')
+    expect(getBossStage(0.4)).toBe('control')
+    expect(getBossStage(0.33)).toBe('enraged')
+    expect(getBossStage(0.1)).toBe('enraged')
+  })
+})
+
+describe('boss HP-threshold stages (attack tempo, no new attack types)', () => {
+  it('attacks faster and telegraphs more briefly at low health than at full health', () => {
+    const fullHealth = createEnemy(overlord, { x: 0, y: 0 })
+    const player = createPlayer({ x: 1000, y: 0 }, [], 'none')
+    updateBoss(fullHealth, overlord, player, overlord.bossAttackInterval ?? 3.5) // idle -> telegraph
+    const fullHealthTelegraphDuration = fullHealth.bossTimer
+    expect(fullHealth.bossStage).toBe('hunt')
+
+    const lowHealth = createEnemy(overlord, { x: 0, y: 0 })
+    lowHealth.health = lowHealth.maxHealth * 0.2
+    updateBoss(lowHealth, overlord, player, overlord.bossAttackInterval ?? 3.5) // idle -> telegraph
+    const lowHealthTelegraphDuration = lowHealth.bossTimer
+    expect(lowHealth.bossStage).toBe('enraged')
+
+    expect(lowHealthTelegraphDuration).toBeLessThan(fullHealthTelegraphDuration)
+
+    // finish the telegraph on both and compare the next idle-phase interval
+    updateBoss(fullHealth, overlord, player, fullHealthTelegraphDuration) // attack fires -> attack phase
+    updateBoss(fullHealth, overlord, player, 0.15) // -> idle
+    const fullHealthInterval = fullHealth.bossTimer
+
+    updateBoss(lowHealth, overlord, player, lowHealthTelegraphDuration)
+    updateBoss(lowHealth, overlord, player, 0.15)
+    const lowHealthInterval = lowHealth.bossTimer
+
+    expect(lowHealthInterval).toBeLessThan(fullHealthInterval)
+  })
+
+  it('still only ever fires slam, charge, or barrage - no new attack types at any stage', () => {
+    const boss = createEnemy(overlord, { x: 0, y: 0 })
+    boss.health = boss.maxHealth * 0.1
+    const player = createPlayer({ x: 1000, y: 0 }, [], 'none')
+    const resolved: string[] = []
+
+    for (let cycle = 0; cycle < 3; cycle++) {
+      updateBoss(boss, overlord, player, overlord.bossAttackInterval ?? 3.5)
+      const telegraphResult = updateBoss(boss, overlord, player, boss.bossTimer)
+      if (telegraphResult.resolveAttack) resolved.push(telegraphResult.resolveAttack)
+      updateBoss(boss, overlord, player, overlord.bossChargeDuration ?? 0.45)
+      updateBoss(boss, overlord, player, 0.15)
+    }
+
+    expect(resolved).toEqual(['slam', 'charge', 'barrage'])
+    expect(new Set(resolved).size).toBeLessThanOrEqual(3)
+  })
+})
+
+describe('boss entrance sequence', () => {
+  it('holds still, does not attack, and shows a name callout for a brief pause after spawning', () => {
+    const engine = new GameEngine(70, assaultRifle.id, {}, 'blitz')
+    engine.player.health = 99999
+    engine.player.armor = 99999
+    forceWaveComplete(engine) // -> wave 2
+    engine.wave.spawnQueue = []
+    engine.wave.enemiesAlive = 0
+    for (let i = 0; i < 60 && !engine.enemyList.some((e) => e.defId === overlord.id); i++) {
+      engine.update(0.1, idleInput()) // -> wave 3, first boss encounter; stop the instant it spawns
+    }
+    const boss = engine.enemyList.find((e) => e.defId === overlord.id)!
+    const positionAtSpawn = { ...boss.position }
+
+    expect(engine.getHudSnapshot().bossEntrance?.name).toBe(overlord.name)
+
+    engine.update(1 / 60, idleInput())
+    expect(boss.position).toEqual(positionAtSpawn)
+    expect(boss.bossPhase).toBe('idle')
+
+    for (let i = 0; i < 90; i++) engine.update(1 / 60, idleInput())
+    expect(engine.getHudSnapshot().bossEntrance).toBeNull()
   })
 })

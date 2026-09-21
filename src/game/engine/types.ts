@@ -121,6 +121,9 @@ export interface Player {
 
 export type BossPhase = 'idle' | 'telegraph' | 'attack'
 export type BossAttackId = 'slam' | 'charge' | 'barrage'
+/** HP-threshold escalation, independent of the idle/telegraph/attack state machine above:
+ * modulates only attack tempo (interval/telegraph duration), never adds new attack types. */
+export type BossStage = 'hunt' | 'control' | 'enraged'
 
 export type StatusEffectType = 'burn' | 'slow' | 'mark'
 
@@ -147,6 +150,7 @@ export interface Enemy {
   cloaked: boolean
   phaseTimer: number
   bossPhase: BossPhase
+  bossStage: BossStage
   bossAttackId: BossAttackId | null
   bossTimer: number
   bossLockedDir: Vector2
@@ -301,6 +305,7 @@ export interface BossHudInfo {
   health: number
   maxHealth: number
   attackTelegraph: BossAttackId | null
+  stage: BossStage
 }
 
 export interface DirectorDebugInfo {
@@ -316,6 +321,7 @@ export interface DirectorDebugInfo {
 export interface HudSnapshot {
   status: GameStatus
   activeSynergies: string[]
+  bossEntrance: { name: string } | null
   health: number
   maxHealth: number
   armor: number

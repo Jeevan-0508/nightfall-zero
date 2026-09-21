@@ -1,8 +1,23 @@
-import type { BossAttackId, Enemy, EnemyDefinition, Obstacle, Player } from '../engine/types'
+import type { BossAttackId, BossStage, Enemy, EnemyDefinition, Obstacle, Player } from '../engine/types'
 import { normalize, subtract, scale, distance } from '../engine/vector'
 import { resolveObstacleCollisions } from '../collision/collision'
 
 const BOSS_ATTACK_ORDER: BossAttackId[] = ['slam', 'charge', 'barrage']
+
+/** HP thresholds that escalate a boss through hunt -> control -> enraged. */
+const BOSS_CONTROL_HEALTH_RATIO = 0.66
+const BOSS_ENRAGED_HEALTH_RATIO = 0.33
+
+/** Lower stages attack more often and telegraph more briefly - same slam/charge/barrage
+ * rotation throughout, just less time to react as the fight escalates. */
+const BOSS_INTERVAL_MULTIPLIER: Record<BossStage, number> = { hunt: 1, control: 0.75, enraged: 0.5 }
+const BOSS_TELEGRAPH_MULTIPLIER: Record<BossStage, number> = { hunt: 1, control: 0.85, enraged: 0.65 }
+
+export function getBossStage(healthRatio: number): BossStage {
+  if (healthRatio <= BOSS_ENRAGED_HEALTH_RATIO) return 'enraged'
+  if (healthRatio <= BOSS_CONTROL_HEALTH_RATIO) return 'control'
+  return 'hunt'
+}
 
 export interface BossUpdateResult {
   /** Non-null exactly on the single frame an attack fires; the caller resolves its damage/projectiles once. */
@@ -25,6 +40,7 @@ export function updateBoss(
 ): BossUpdateResult {
   const result: BossUpdateResult = { resolveAttack: null }
   enemy.bossTimer -= dt
+  enemy.bossStage = getBossStage(enemy.maxHealth > 0 ? enemy.health / enemy.maxHealth : 1)
 
   if (enemy.bossPhase === 'idle') {
     const toPlayer = subtract(player.position, enemy.position)
@@ -39,7 +55,7 @@ export function updateBoss(
       const lastIndex = enemy.bossAttackId ? BOSS_ATTACK_ORDER.indexOf(enemy.bossAttackId) : BOSS_ATTACK_ORDER.length - 1
       enemy.bossAttackId = BOSS_ATTACK_ORDER[(lastIndex + 1) % BOSS_ATTACK_ORDER.length]
       enemy.bossPhase = 'telegraph'
-      enemy.bossTimer = def.bossTelegraphDuration ?? 0.6
+      enemy.bossTimer = (def.bossTelegraphDuration ?? 0.6) * BOSS_TELEGRAPH_MULTIPLIER[enemy.bossStage]
       enemy.velocity = { x: 0, y: 0 }
     }
     return result
@@ -70,7 +86,7 @@ export function updateBoss(
 
   if (enemy.bossTimer <= 0) {
     enemy.bossPhase = 'idle'
-    enemy.bossTimer = def.bossAttackInterval ?? 3.5
+    enemy.bossTimer = (def.bossAttackInterval ?? 3.5) * BOSS_INTERVAL_MULTIPLIER[enemy.bossStage]
     enemy.velocity = { x: 0, y: 0 }
   }
   return result

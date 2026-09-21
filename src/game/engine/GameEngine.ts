@@ -64,6 +64,10 @@ import {
   isSynergyActive,
   type UpgradeTheme,
 } from '../combat/synergies'
+
+/** Brief pause + name callout before a freshly spawned boss starts acting, reusing the existing
+ * spawn-ring particle and bossSpawn audio cue rather than adding new VFX/audio. */
+const BOSS_ENTRANCE_DURATION = 1.2
 import { circleIntersectsAnyObstacle, circlesIntersect, resolveObstacleCollisions } from '../collision/collision'
 import {
   createWaveState,
@@ -123,6 +127,8 @@ export class GameEngine {
   telemetry: TelemetryState = createTelemetryState()
   pendingUpgradeChoices: UpgradeOption[] = []
   chosenUpgrades: UpgradeOption[] = []
+  private bossEntranceId: number | null = null
+  private bossEntranceTimer = 0
   map: MapDefinition
   mode: GameModeDefinition
   readonly seed: number
@@ -448,6 +454,9 @@ export class GameEngine {
     const boss = this.spawnEnemy(bossDef, { x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.2 })
     this.enemyList.push(boss)
     this.wave.enemiesAlive += 1
+    this.bossEntranceId = boss.id
+    this.bossEntranceTimer = BOSS_ENTRANCE_DURATION
+    spawnSpawnRing(this.particles, boss.position)
     this.pushEvent('bossSpawn')
   }
 
@@ -467,9 +476,13 @@ export class GameEngine {
       if (!def) continue
 
       if (def.behavior === 'boss') {
+        if (enemy.hitFlash > 0) enemy.hitFlash = Math.max(0, enemy.hitFlash - dt)
+        if (this.bossEntranceId === enemy.id && this.bossEntranceTimer > 0) {
+          this.bossEntranceTimer = Math.max(0, this.bossEntranceTimer - dt)
+          continue // holds still, no attacks, while the entrance callout plays
+        }
         const bossResult = updateBoss(enemy, def, this.player, dt, this.map.obstacles)
         if (enemy.attackCooldown > 0) enemy.attackCooldown = Math.max(0, enemy.attackCooldown - dt)
-        if (enemy.hitFlash > 0) enemy.hitFlash = Math.max(0, enemy.hitFlash - dt)
         this.resolveBossAttack(enemy, def, bossResult.resolveAttack)
         this.applyBurnTick(enemy, def, dt)
         continue
@@ -746,9 +759,14 @@ export class GameEngine {
     const bossEnemy = this.enemyList.find((e) => e.alive && enemyDefs[e.defId]?.behavior === 'boss')
     const stacks = this.themeStacks
     const activeSynergies = (Object.keys(stacks) as UpgradeTheme[]).filter((theme) => isSynergyActive(stacks, theme))
+    const bossEntrance =
+      bossEnemy && this.bossEntranceId === bossEnemy.id && this.bossEntranceTimer > 0
+        ? { name: enemyDefs[bossEnemy.defId].name }
+        : null
     return {
       status: this.status,
       activeSynergies,
+      bossEntrance,
       health: this.player.health,
       maxHealth: this.player.maxHealth,
       armor: this.player.armor,
@@ -798,6 +816,7 @@ export class GameEngine {
             health: bossEnemy.health,
             maxHealth: bossEnemy.maxHealth,
             attackTelegraph: bossEnemy.bossPhase === 'telegraph' ? bossEnemy.bossAttackId : null,
+            stage: bossEnemy.bossStage,
           }
         : null,
     }
