@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { GameEngine } from '../game/engine/GameEngine'
 import { createEnemy } from '../game/entities/factories'
-import { brute, walker } from '../content/enemies'
+import { brute, overlord, walker } from '../content/enemies'
 import type { InputState } from '../game/engine/types'
-import { assaultRifle } from '../content/weapons'
+import { assaultRifle, flamethrower, sniper } from '../content/weapons'
 
 function idleInput(overrides: Partial<InputState> = {}): InputState {
   return { up: false, down: false, left: false, right: false, aimX: 0, aimY: 0, firing: false, switchTo: null, abilityTrigger: null, ...overrides }
@@ -28,6 +28,38 @@ describe('GameEngine event stream', () => {
 
     for (let i = 0; i < 60; i++) engine.update(1 / 60, idleInput({ aimX: 200, aimY: 100 }))
     expect(engine.recoilAmount).toBe(0)
+  })
+
+  it('gives a heavy-recoil weapon (sniper) a real screen kick on every shot, scaled off its own recoil stat', () => {
+    const engine = new GameEngine(13)
+    engine.player.position = { x: 100, y: 100 }
+    engine.update(1 / 60, idleInput({ aimX: 200, aimY: 100, firing: true, switchTo: sniper.id }))
+    expect(engine.screenShake).toBeGreaterThan(0)
+  })
+
+  it('lets a light-recoil weapon\'s tiny fire-kick decay away within the frame, unlike a real hit/explosion shake', () => {
+    const engine = new GameEngine(13)
+    engine.player.position = { x: 100, y: 100 }
+    engine.update(1 / 60, idleInput({ aimX: 200, aimY: 100, firing: true, switchTo: flamethrower.id }))
+    expect(engine.screenShake).toBe(0)
+  })
+
+  it('shakes the screen when a boss is defeated, not just when it hits the player', () => {
+    const engine = new GameEngine(14)
+    engine.player.position = { x: 100, y: 100 }
+    const boss = createEnemy(overlord, { x: 300, y: 100 })
+    boss.health = 1
+    engine.enemyList.push(boss)
+
+    const input = idleInput({ aimX: 300, aimY: 100, firing: true })
+    let killed = false
+    for (let i = 0; i < 240 && !killed; i++) {
+      engine.update(1 / 60, input)
+      if (!boss.alive) killed = true
+    }
+
+    expect(killed).toBe(true)
+    expect(engine.screenShake).toBeGreaterThan(0)
   })
 
   it('emits hit/critHit and enemyDeath from a killing shot, and drains exactly once', () => {

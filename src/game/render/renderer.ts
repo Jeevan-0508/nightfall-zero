@@ -2,7 +2,7 @@ import type { GameEngine } from '../engine/GameEngine'
 import { ARENA_HEIGHT, ARENA_WIDTH } from '../engine/types'
 import type { BossStage, Enemy, EnemyDefinition, Projectile } from '../engine/types'
 import { SHIELD_CAPACITY } from '../combat/eliteModifiers'
-import { DEATH_ANIMATION_DURATION, SPAWN_ANIMATION_DURATION } from '../entities/factories'
+import { BOSS_DEATH_TIMER, DEATH_ANIMATION_DURATION, SPAWN_ANIMATION_DURATION } from '../entities/factories'
 import { enemies as enemyDefs } from '../../content/enemies'
 import { drawPlayerCharacter } from './characters/playerCharacter'
 import { drawEnemyCharacter, drawEyesAtHead, type EnemyAnimInputs } from './characters/enemyCharacters'
@@ -542,6 +542,78 @@ function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n))
 }
 
+/** A quick expanding, fading stroke ring centered at the current origin - the same cheap cue
+ * already used for shield/teleport/explosive rings above, reused here as a ground-impact/burst
+ * flourish for death behaviors that want one. Drawn (and faded) independently of the caller's
+ * own death-alpha multiply, since a burst ring should read as a sudden event, not dim in lockstep
+ * with the body it's bursting from. */
+function drawDeathShockwave(ctx: CanvasRenderingContext2D, baseRadius: number, ringProgress: number, rgb: string): void {
+  const alpha = (1 - clamp01(ringProgress)) * 0.6
+  if (alpha <= 0) return
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(0, 0, baseRadius * (1 + ringProgress * 1.4), 0, Math.PI * 2)
+  ctx.strokeStyle = `rgba(${rgb}, ${alpha})`
+  ctx.lineWidth = 2
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** Per-type death motion, layered on the shared spawn/death timer system (factories.ts). Runs
+ * in the enemy's translated-but-unrotated local space, before ctx.rotate(facing) - keeping the
+ * body-squash math independent of facing is why a fleeing Runner's tumble and a Boss's shudder
+ * still look right regardless of which way the enemy died facing.
+ *
+ * Walker: topples forward and flattens. Runner: fast tumble-spin with a forward slide, matching
+ * how it died at speed. Spitter (ranged): a quick toxic-green burst-then-collapse plus a burst
+ * ring, in place of a squash that would suit a lumbering body but not a bio-spitter. Brute: a
+ * slow, heavy drop (eased-in, not linear) with a ground-impact ring. Stalker: unchanged upward
+ * dissipation. Boss: a shudering hold (BOSS_DEATH_TIMER buys the extra time - the shared alpha
+ * formula naturally clamps to 0 during the hold since deathTimer starts above
+ * DEATH_ANIMATION_DURATION) before an exaggerated collapse. Exploder and any future/unlisted
+ * type keep the original generic squash-and-fade - the Exploder's own spectacle is its
+ * explosion burst (detonateEnemy), not its body fade, per the existing short EXPLODER_DEATH_TIMER. */
+export function applyEnemyDeathTransform(ctx: CanvasRenderingContext2D, enemy: Enemy, def: EnemyDefinition): void {
+  const deathProgress = clamp01(1 - enemy.deathTimer / DEATH_ANIMATION_DURATION)
+
+  if (enemy.defId === 'brute') {
+    drawDeathShockwave(ctx, def.radius, deathProgress / 0.5, '255, 255, 255')
+  } else if (def.behavior === 'ranged') {
+    drawDeathShockwave(ctx, def.radius * 0.8, deathProgress / 0.6, '120, 230, 140')
+  }
+
+  if (def.behavior === 'stalker') {
+    ctx.translate(0, -deathProgress * 22)
+  } else if (def.behavior === 'boss') {
+    if (enemy.deathTimer > DEATH_ANIMATION_DURATION) {
+      const holdProgress = clamp01(1 - (enemy.deathTimer - DEATH_ANIMATION_DURATION) / (BOSS_DEATH_TIMER - DEATH_ANIMATION_DURATION))
+      const jitter = (Math.random() - 0.5) * holdProgress * def.radius * 0.06
+      ctx.translate(jitter, jitter * 0.6)
+    } else {
+      ctx.scale(1 + deathProgress * 0.5, 1 - deathProgress * 0.7)
+    }
+  } else if (enemy.defId === 'runner') {
+    ctx.rotate(deathProgress * Math.PI * 2.4)
+    ctx.translate(Math.sin(deathProgress * Math.PI) * 10, 0)
+    ctx.scale(1 - deathProgress * 0.4, 1 - deathProgress * 0.4)
+  } else if (enemy.defId === 'brute') {
+    const heavy = deathProgress * deathProgress
+    ctx.translate(0, heavy * 5)
+    ctx.scale(1 + heavy * 0.5, 1 - heavy * 0.6)
+  } else if (def.behavior === 'ranged') {
+    const burst = Math.sin(deathProgress * Math.PI)
+    ctx.scale(1 + burst * 0.6, 1 + burst * 0.6)
+  } else if (enemy.defId === 'walker') {
+    ctx.rotate(deathProgress * 0.55)
+    ctx.translate(0, deathProgress * def.radius * 0.3)
+    ctx.scale(1, 1 - deathProgress * 0.75)
+  } else {
+    ctx.scale(1 + deathProgress * 0.3, 1 - deathProgress * 0.5)
+  }
+
+  ctx.globalAlpha *= 1 - deathProgress
+}
+
 function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   for (const enemy of engine.enemyList) {
     if (!enemy.alive && enemy.deathTimer <= 0) continue
@@ -631,13 +703,7 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
       ctx.scale(growScale, growScale)
       ctx.globalAlpha *= spawnProgress
     } else if (!enemy.alive && enemy.deathTimer > 0) {
-      const deathProgress = clamp01(1 - enemy.deathTimer / DEATH_ANIMATION_DURATION)
-      if (def.behavior === 'stalker') {
-        ctx.translate(0, -deathProgress * 22)
-      } else {
-        ctx.scale(1 + deathProgress * 0.3, 1 - deathProgress * 0.5)
-      }
-      ctx.globalAlpha *= 1 - deathProgress
+      applyEnemyDeathTransform(ctx, enemy, def)
     }
 
     ctx.rotate(facing)

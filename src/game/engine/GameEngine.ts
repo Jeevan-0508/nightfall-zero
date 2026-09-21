@@ -114,6 +114,8 @@ const WAVE_CLEAR_DELAY = 2.2
 const SCREEN_SHAKE_HIT = 0.08
 const SCREEN_SHAKE_PLAYER_HIT = 0.18
 const SCREEN_SHAKE_EXPLOSION = 0.3
+/** Own-fire kick, scaled off the weapon's existing recoil stat so heavy guns (shotgun, sniper, rocket launcher) already feel punchy without a per-weapon-id list. */
+const FIRE_SHAKE_SCALE = 0.01
 const RECOIL_RECOVERY_RATE = 45
 const DASH_DISTANCE = 150
 const COMBO_WINDOW = 2.5
@@ -380,6 +382,7 @@ export class GameEngine {
         this.projectiles.push(...result.projectiles)
         this.stats.shotsFired += 1
         this.recoilAmount = weapon.recoil
+        this.screenShake = Math.max(this.screenShake, weapon.recoil * FIRE_SHAKE_SCALE)
         spawnMuzzleFlash(this.particles, muzzlePosition, this.player.rotation, weapon.id)
         spawnShellCasing(this.particles, this.player.position, this.player.rotation)
         recordWeaponShot(this.telemetry, weapon.id)
@@ -875,7 +878,10 @@ export class GameEngine {
     this.comboTimer = COMBO_WINDOW
     this.awardXp(def.xpValue * (elite ? ELITE_XP_MULTIPLIER : 1))
     this.pushEvent('enemyDeath')
-    if (def.behavior === 'boss') this.pushEvent('bossDefeated')
+    if (def.behavior === 'boss') {
+      this.pushEvent('bossDefeated')
+      this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
+    }
   }
 
   private applyDamageToPlayer(rawAmount: number): void {

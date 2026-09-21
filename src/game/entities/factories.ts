@@ -35,11 +35,24 @@ export const SPAWN_ANIMATION_DURATION = 0.35
 export const DEATH_ANIMATION_DURATION = 0.4
 /** An Exploder's own body fade matters less than its explosion burst, so cut its lingering window short. */
 const EXPLODER_DEATH_TIMER = 0.16
+/** A boss death should read as an event, not a squash-and-fade like every other enemy. The extra
+ * time beyond DEATH_ANIMATION_DURATION buys a dramatic hold (renderer.ts jitters it) before the
+ * shared fade-out formula - which normalizes progress against DEATH_ANIMATION_DURATION and clamps
+ * below zero to 0 - kicks in for the final, ordinary-length fade. No formula changes required. */
+export const BOSS_DEATH_TIMER = 1.0
+
+function isBossDefId(defId: string): boolean {
+  return defId === 'overlord' || defId === 'executioner'
+}
 
 /** Single point where an enemy is marked dead, so every kill path (direct hit, burn tick, contact explosion, AOE explosion) starts the same death-fade window instead of each setting `alive = false` inline. */
 export function killEnemy(enemy: Enemy): void {
   enemy.alive = false
-  enemy.deathTimer = enemy.defId === 'exploder' ? EXPLODER_DEATH_TIMER : DEATH_ANIMATION_DURATION
+  enemy.deathTimer = enemy.defId === 'exploder'
+    ? EXPLODER_DEATH_TIMER
+    : isBossDefId(enemy.defId)
+      ? BOSS_DEATH_TIMER
+      : DEATH_ANIMATION_DURATION
 }
 
 let enemyIdCounter = 0
