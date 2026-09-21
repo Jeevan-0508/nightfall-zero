@@ -235,6 +235,23 @@ button {
   letter-spacing: 1px;
 }
 
+.menu-credit {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #2e394a;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.menu-credit-mark {
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+}
+
 .loadout-panel {
   text-align: center;
   padding: 40px 48px;
