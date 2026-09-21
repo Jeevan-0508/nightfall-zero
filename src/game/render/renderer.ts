@@ -218,22 +218,24 @@ function drawBackground(ctx: CanvasRenderingContext2D, engine: GameEngine): void
 
   drawSkyline(ctx)
 
+  // Same lines, same colors as before - batched into one path per direction (was one
+  // beginPath/stroke call per line, ~33 draw calls/frame for this arena size; now 2).
   const pulse = 0.5 + Math.sin(t * 0.6) * 0.5
   ctx.strokeStyle = `rgba(${palette.gridV}, ${0.06 + pulse * 0.05})`
   ctx.lineWidth = 1
+  ctx.beginPath()
   for (let x = 0; x <= ARENA_WIDTH; x += GRID_SIZE) {
-    ctx.beginPath()
     ctx.moveTo(x, 0)
     ctx.lineTo(x, ARENA_HEIGHT)
-    ctx.stroke()
   }
+  ctx.stroke()
   ctx.strokeStyle = `rgba(${palette.gridH}, ${0.05 + pulse * 0.05})`
+  ctx.beginPath()
   for (let y = 0; y <= ARENA_HEIGHT; y += GRID_SIZE) {
-    ctx.beginPath()
     ctx.moveTo(0, y)
     ctx.lineTo(ARENA_WIDTH, y)
-    ctx.stroke()
   }
+  ctx.stroke()
 
   drawEmbers(ctx, t)
 
