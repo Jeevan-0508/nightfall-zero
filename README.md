@@ -18,7 +18,7 @@
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![tests](https://img.shields.io/badge/tests-114_passing-22c55e?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-258_passing-22c55e?style=for-the-badge)
 ![Pages](https://img.shields.io/badge/GitHub%20Pages-LIVE-22c55e?style=for-the-badge&logo=github)
 ![MIT](https://img.shields.io/badge/Licence-MIT-38bdf8?style=for-the-badge)
 
@@ -37,6 +37,22 @@
 </div>
 
 **[Open the live game](https://jeevan-0508.github.io/nightfall-zero/)**, no download, no sign-in, WASD and a mouse.
+
+## 📸 Screenshots
+
+<p align="center">
+<img src="assets/screenshots/mid-combat.png" width="420" alt="Mid-combat, holding ground on the Bunker map as a wave closes in">
+<img src="assets/screenshots/boss-fight.png" width="420" alt="The Overlord boss encounter, health ring and telegraph visible">
+</p>
+<p align="center">
+<img src="assets/screenshots/run-event.png" width="420" alt="A Blackout run event darkening the edges of the arena">
+</p>
+
+These are real frames from the game's own render pipeline (`src/game/render/renderer.ts`), captured by driving an
+actual `GameEngine` and its actual `draw()` function through `node-canvas` rather than a live browser tab, since
+this project is normally built and shipped headless. They show the canvas arena exactly as it draws; the HTML
+HUD overlay (health bar, weapon, minimap, wave counter) is a separate React layer on top and isn't in these
+three. **[Play the live game](https://jeevan-0508.github.io/nightfall-zero/)** to see the whole thing together.
 
 ## ⚡ What Is This?
 
@@ -61,6 +77,10 @@ and the same inputs, and it replays byte-for-byte, which is also how every mecha
 | **Q** | Throw grenade |
 | **E** | Overcharge (temporary fire-rate + speed boost) |
 | **ESC** | Pause / resume |
+
+A HUD button below the minimap (and a matching checkbox in Settings) toggles **auto-aim**: leave the mouse
+still for a moment and the reticle snaps to and tracks the nearest living enemy on its own, still fully
+overridden the instant you move the mouse again.
 
 Pick a starting weapon on the loadout screen, then survive. Every wave adds more enemies; every five waves, a
 boss. Level up mid-run to choose from randomized stat upgrades. Every run also earns scrap, spendable in the
@@ -115,12 +135,29 @@ spawn pacing and enemy mix in response, the same idea as Left 4 Dead's AI Direct
 It cannot spawn a boss early or skip a wave; it only leans the existing wave definitions toward more or less
 pressure.
 
+## ⚡ Run Events
+
+From wave 3 onward, every wave start has a chance to roll one of three timed events, never two at once, with a
+cooldown between them:
+
+| Event | Effect |
+|---|---|
+| **Blackout** | Vision collapses toward a near-total-black vignette and the minimap hides every non-boss blip |
+| **Hunted** | Spawn pacing spikes and the mix skews toward tougher enemies until it ends |
+| **Supply Drop** | A pickup appears on the map; walk over it for a heal and a burst of XP |
+
+A HUD banner calls out every event, and Overcharge, the moment it starts.
+
 ## 🗂 Menus
 
 Main menu branches three ways: **PLAY** into loadout and mode select, **ARMORY** to spend scrap, and
-**SETTINGS** for a single master-volume slider, saved to `localStorage` and applied immediately, live, to the
-Web Audio master gain. **ESC** during a run opens a pause menu (resume, restart, or quit to the main menu)
+**SETTINGS** for a single master-volume slider (plus the auto-aim toggle above), saved to `localStorage` and
+applied immediately, live. **ESC** during a run opens a pause menu (resume, restart, or quit to the main menu)
 without disturbing anything the level-up overlay is already showing.
+
+Leave mid-run, paused or straight to the menu, and a **CONTINUE - WAVE n** button appears above PLAY next time,
+skipping the loadout screen and picking back up with the same health, level, upgrades, weapon, and wave. The
+run autosaves every few seconds and the instant you pause; dying clears the save.
 
 ## 🎯 Game Modes
 
@@ -168,7 +205,7 @@ Balance, ranks, and lifetime stats (total runs, total kills, best survival time,
 | Rendering | **Canvas 2D** (hand-rolled) | The actual game: player, enemies, projectiles, particles, obstacles |
 | State | **Zustand 5** | Menu/loadout/armory/game-over view routing, HUD snapshot store, `persist`-backed meta-progression |
 | Build | **Vite 8** | Dev server and production bundling |
-| Testing | **Vitest 5** (happy-dom) | 114 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
+| Testing | **Vitest 5** (happy-dom) | 258 tests over pure engine/AI/collision logic, zero UI-snapshot tests |
 | Lint | **oxlint** | Fast, zero-config linting |
 | Runtime | **bun** | Install, dev, test, build |
 | Hosting | **GitHub Pages** | Static deploy via GitHub Actions on every push to `main` |
@@ -178,17 +215,18 @@ Balance, ranks, and lifetime stats (total runs, total kills, best survival time,
 ```
 src/game/engine/     GameEngine orchestrator, deterministic seeded rng, shared types, vector math, particles
 src/game/entities/    Factories for player/enemy/projectile; every id counter lives here
-src/game/combat/      Damage resolution, weapon firing/reload, explosions, ranged attacks, abilities
+src/game/combat/      Damage resolution, weapon firing/reload, explosions, ranged attacks, abilities, auto-aim
 src/game/ai/          Enemy behavior state machines, boss attack rotation
 src/game/collision/   Circle-circle and circle-obstacle intersection + push-out resolution
 src/game/waves/       Spawn queueing, obstacle-aware spawn placement, wave completion
 src/game/director/    Adaptive difficulty director
+src/game/events/      Run-event state machine (Blackout, Hunted, Supply Drop)
 src/game/render/      Canvas 2D draw pipeline
 src/game/meta/        Pure meta-progression logic: scrap payout, upgrade cost curve, applying owned ranks
 src/content/          Data only: weapons, enemies, waves, upgrades, abilities, maps, meta-upgrades
 src/store/            Zustand stores: game view/loadout/armory, HUD snapshot, persisted meta-progression
 src/ui/               React components: canvas host, HUD, menus, overlays
-src/tests/            114 tests, one file per subsystem, testing pure functions directly
+src/tests/            258 tests, one file per subsystem, testing pure functions directly
 ```
 
 The engine is a plain class with no framework dependency: `GameEngine.update(dt, input)` advances one frame and
@@ -203,7 +241,7 @@ git clone https://github.com/Jeevan-0508/nightfall-zero.git
 cd nightfall-zero
 bun install
 bun run dev         # http://localhost:5173/nightfall-zero/
-bun run test        # 114 tests
+bun run test        # 258 tests
 bun run typecheck
 bun run build
 ```
@@ -214,16 +252,16 @@ Requires [bun](https://bun.sh).
 
 - **Two bosses.** The attack-rotation state machine (telegraph, attack, cooldown) is built to hold any number of
   boss definitions; only the Overlord and the Executioner ship today, alternating every encounter.
-- **No pickups.** Every weapon and ability is available from the first frame. The loadout screen picks what you
-  start equipped with, not what you have access to.
-- **One save slot.** The Armory's scrap, upgrade ranks, and lifetime stats persist in `localStorage`, but there
-  is only one save, no cloud sync, and no way to export or reset it from the UI.
+- **No weapon pickups.** Every weapon and ability is available from the first frame. The loadout screen picks
+  what you start equipped with, not what you have access to. The one exception is the Supply Drop run event,
+  which does spawn a real pickup entity on the map.
+- **One save slot for progress, one checkpoint for a run.** The Armory's scrap, upgrade ranks, and lifetime
+  stats persist in `localStorage` as the single permanent save, no cloud sync, no export/reset from the UI. A
+  separate, secondary save lets you resume the current run after closing the tab, but it is a checkpoint, not a
+  frame-perfect freeze: resuming restarts the current wave fresh rather than mid-fight, so the exact enemies on
+  screen and any in-progress run event do not carry over.
 - **No sound files.** Every effect is a synthesized Web Audio oscillator, not a mixed sample, so combat audio is
   functional rather than produced.
-- **Visual pass, unverified by eye.** The atmosphere, silhouettes, weapon FX, tactical HUD, and death sequence
-  were all built and shipped in one automated session with no way to screenshot the running canvas. Every
-  change passed typecheck, lint, build, and the full test suite, but the actual look has not been confirmed
-  against the live site yet.
 
 ## Licence
 
