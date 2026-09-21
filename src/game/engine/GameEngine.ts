@@ -79,7 +79,7 @@ import {
 /** Brief pause + name callout before a freshly spawned boss starts acting, reusing the existing
  * spawn-ring particle and bossSpawn audio cue rather than adding new VFX/audio. */
 const BOSS_ENTRANCE_DURATION = 1.2
-import { circleIntersectsAnyObstacle, circlesIntersect, resolveObstacleCollisions } from '../collision/collision'
+import { circleIntersectsAnyObstacle, circlesIntersect, resolveObstacleCollisions, sweepIntersectsCircle } from '../collision/collision'
 import { SpatialGrid } from '../collision/spatialGrid'
 import {
   createWaveState,
@@ -238,7 +238,7 @@ export class GameEngine {
     if (this.eventToastTimer > 0) this.eventToastTimer = Math.max(0, this.eventToastTimer - dt)
     this.updateSpawning(dt)
     this.updateEnemies(dt)
-    this.resolveProjectileHits()
+    this.resolveProjectileHits(dt)
     this.resolveContactDamage()
     this.resolveEnemyProjectileHits()
 
@@ -331,12 +331,19 @@ export class GameEngine {
 
     if (input.firing) {
       const reloadingBeforeFire = state.reloading
-      const result = tryFire(this.player.position, this.player.rotation, state, weapon, this.rng)
+      // Spawn from the muzzle (just past the player's edge, along their aim), not the player's
+      // center - otherwise every shot visually originates from inside the player sprite.
+      const facing = fromAngle(this.player.rotation)
+      const muzzlePosition = {
+        x: this.player.position.x + facing.x * (this.player.radius + 6),
+        y: this.player.position.y + facing.y * (this.player.radius + 6),
+      }
+      const result = tryFire(muzzlePosition, this.player.rotation, state, weapon, this.rng)
       if (result.fired) {
         this.projectiles.push(...result.projectiles)
         this.stats.shotsFired += 1
         this.recoilAmount = weapon.recoil
-        spawnMuzzleFlash(this.particles, this.player.position, this.player.rotation, weapon.id)
+        spawnMuzzleFlash(this.particles, muzzlePosition, this.player.rotation, weapon.id)
         spawnShellCasing(this.particles, this.player.position, this.player.rotation)
         recordWeaponShot(this.telemetry, weapon.id)
         this.pushEvent('shotFired')
@@ -655,7 +662,7 @@ export class GameEngine {
     this.enemyProjectiles = remaining
   }
 
-  private resolveProjectileHits(): void {
+  private resolveProjectileHits(dt: number): void {
     // Enemies may have moved since updateEnemies() built the grid this tick, so it's rebuilt
     // here with current positions before being used for hit queries.
     this.enemyGrid.rebuild(this.enemyList.filter((e) => e.alive))
@@ -663,12 +670,27 @@ export class GameEngine {
     for (const projectile of this.projectiles) {
       let hitEnemy: Enemy | null = null
 
-      const nearby = this.enemyGrid.queryRadius(projectile.position, projectile.radius + MAX_ENEMY_RADIUS_FOR_HIT_QUERY)
+      // updateProjectiles() already advanced position this tick; reconstruct where it started so
+      // fast projectiles (e.g. the sniper) are checked against the whole path they swept through,
+      // not just the point they ended at - otherwise a bullet can travel clean past a small target
+      // between two frames without ever registering a hit (tunneling).
+      const previousPosition = {
+        x: projectile.position.x - projectile.velocity.x * dt,
+        y: projectile.position.y - projectile.velocity.y * dt,
+      }
+      const travelDistance = Math.hypot(
+        projectile.position.x - previousPosition.x,
+        projectile.position.y - previousPosition.y,
+      )
+      const nearby = this.enemyGrid.queryRadius(
+        projectile.position,
+        projectile.radius + MAX_ENEMY_RADIUS_FOR_HIT_QUERY + travelDistance,
+      )
       for (const enemy of nearby) {
         if (!enemy.alive || enemy.cloaked) continue
         const def = enemyDefs[enemy.defId]
         if (!def) continue
-        if (circlesIntersect(projectile.position, projectile.radius, enemy.position, def.radius)) {
+        if (sweepIntersectsCircle(previousPosition, projectile.position, projectile.radius, enemy.position, def.radius)) {
           hitEnemy = enemy
           this.applyProjectileHit(projectile, enemy, def)
           break
