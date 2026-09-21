@@ -18,7 +18,7 @@
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![tests](https://img.shields.io/badge/tests-258_passing-22c55e?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-330_passing-22c55e?style=for-the-badge)
 ![Pages](https://img.shields.io/badge/GitHub%20Pages-LIVE-22c55e?style=for-the-badge&logo=github)
 ![MIT](https://img.shields.io/badge/Licence-MIT-38bdf8?style=for-the-badge)
 
@@ -53,6 +53,19 @@ actual `GameEngine` and its actual `draw()` function through `node-canvas` rathe
 this project is normally built and shipped headless. They show the canvas arena exactly as it draws; the HTML
 HUD overlay (health bar, weapon, minimap, wave counter) is a separate React layer on top and isn't in these
 three. **[Play the live game](https://jeevan-0508.github.io/nightfall-zero/)** to see the whole thing together.
+
+## 🎬 Gameplay Clip
+
+<p align="center">
+<a href="https://github.com/Jeevan-0508/nightfall-zero/releases/download/media-gameplay-clip/nightfall-zero-gameplay.mp4">
+<img src="assets/screenshots/mid-combat.png" width="480" alt="Click to play a real gameplay recording (mp4)">
+<br>▶ Click to play a real gameplay recording (.mp4)
+</a>
+</p>
+
+GitHub READMEs can't autoplay a `<video>` tag, so this links out to the actual clip - a real recorded run, hosted
+as a [release asset](https://github.com/Jeevan-0508/nightfall-zero/releases/tag/media-gameplay-clip) rather than
+committed into the repo itself.
 
 ## ⚡ What Is This?
 
