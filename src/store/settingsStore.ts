@@ -37,6 +37,8 @@ interface SettingsStore {
   setScreenShakeIntensity: (value: number) => void
   colorblindMode: boolean
   setColorblindMode: (value: boolean) => void
+  autoAim: boolean
+  setAutoAim: (value: boolean) => void
   keybinds: Record<RebindableAction, string>
   setKeybind: (action: RebindableAction, code: string) => void
   resetKeybinds: () => void
@@ -57,6 +59,8 @@ export const useSettingsStore = create<SettingsStore>()(
       setScreenShakeIntensity: (value) => set({ screenShakeIntensity: Math.max(0, Math.min(1.5, value)) }),
       colorblindMode: false,
       setColorblindMode: (value) => set({ colorblindMode: value }),
+      autoAim: false,
+      setAutoAim: (value) => set({ autoAim: value }),
       keybinds: { ...DEFAULT_KEYBINDS },
       setKeybind: (action, code) => {
         set({ keybinds: resolveKeybindConflict(get().keybinds, action, code) })

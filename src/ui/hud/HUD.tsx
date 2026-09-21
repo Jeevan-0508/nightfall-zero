@@ -1,5 +1,6 @@
 import { useHudStore } from '../../store/hudStore'
 import { useGameStore } from '../../store/gameStore'
+import { useSettingsStore } from '../../store/settingsStore'
 import { ARENA_HEIGHT, ARENA_WIDTH } from '../../game/engine/types'
 
 function formatTime(seconds: number): string {
@@ -11,6 +12,8 @@ function formatTime(seconds: number): string {
 export function HUD() {
   const snapshot = useHudStore((s) => s.snapshot)
   const debugPanelOpen = useGameStore((s) => s.debugPanelOpen)
+  const autoAim = useSettingsStore((s) => s.autoAim)
+  const setAutoAim = useSettingsStore((s) => s.setAutoAim)
   const healthPct = Math.max(0, (snapshot.health / snapshot.maxHealth) * 100)
   const armorPct = Math.max(0, (snapshot.armor / snapshot.maxArmor) * 100)
   const xpPct = Math.max(0, Math.min(100, (snapshot.xp / snapshot.xpToNext) * 100))
@@ -54,6 +57,15 @@ export function HUD() {
           }}
         />
       </div>
+
+      <button
+        type="button"
+        className={`hud-autoaim-toggle${autoAim ? ' hud-autoaim-toggle-on' : ''}`}
+        onClick={() => setAutoAim(!autoAim)}
+        title="Auto-aim: locks onto the nearest enemy while your mouse is idle. Moving it always takes back control."
+      >
+        AUTO-AIM {autoAim ? 'ON' : 'OFF'}
+      </button>
 
       <div className="hud-xp-bar">
         <div className="hud-xp-fill" style={{ width: `${xpPct}%` }} />

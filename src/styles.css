@@ -770,6 +770,36 @@ button {
   border-color: rgba(214, 69, 69, 0.5);
 }
 
+.hud-autoaim-toggle {
+  position: absolute;
+  top: 106px;
+  right: 18px;
+  width: 140px;
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #9fb0c8;
+  background: rgba(6, 10, 16, 0.65);
+  border: 1px solid rgba(91, 227, 227, 0.3);
+  border-radius: 2px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.hud-autoaim-toggle:hover {
+  border-color: rgba(91, 227, 227, 0.6);
+}
+
+.hud-autoaim-toggle-on {
+  color: #0a1016;
+  background: rgba(91, 227, 227, 0.85);
+  border-color: rgba(91, 227, 227, 1);
+  box-shadow: 0 0 10px rgba(91, 227, 227, 0.5);
+}
+
 .hud-event-toast {
   position: absolute;
   top: 60%;

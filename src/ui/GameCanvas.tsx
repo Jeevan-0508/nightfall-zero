@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { GameEngine } from '../game/engine/GameEngine'
 import { ARENA_HEIGHT, ARENA_WIDTH, type InputState } from '../game/engine/types'
+import { findNearestAliveEnemy } from '../game/combat/autoAim'
 import { draw, type HitIndicator } from '../game/render/renderer'
 import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
@@ -30,6 +31,10 @@ import {
   playReloadStart,
   playWeaponSwitch,
 } from '../audio/soundEngine'
+
+/** Manual mouse aim always wins - auto-aim only takes the wheel once the mouse has sat still
+ * this long, so a real move interrupts it on the very next frame. */
+const AUTO_AIM_IDLE_MS = 220
 
 const WEAPON_SWITCH_KEYS: Record<string, string> = {
   Digit1: weaponOrder[0].id,
@@ -141,10 +146,12 @@ export function GameCanvas() {
       return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY }
     }
 
+    let lastManualAimTs = 0
     function onMouseMove(e: MouseEvent) {
       const world = toWorld(e.clientX, e.clientY)
       input.aimX = world.x
       input.aimY = world.y
+      lastManualAimTs = performance.now()
     }
     function onMouseDown(e: MouseEvent) {
       if (e.button === 0) input.firing = true
@@ -174,6 +181,14 @@ export function GameCanvas() {
         draw(ctx!, engine, { hitIndicators, reducedMotion, shakeIntensity: screenShakeIntensity, colorblindMode })
         rafId = requestAnimationFrame(tick)
         return
+      }
+
+      if (useSettingsStore.getState().autoAim && now - lastManualAimTs > AUTO_AIM_IDLE_MS) {
+        const target = findNearestAliveEnemy(engine.enemyList, engine.player.position)
+        if (target) {
+          input.aimX = target.position.x
+          input.aimY = target.position.y
+        }
       }
 
       engine.update(dt, input)

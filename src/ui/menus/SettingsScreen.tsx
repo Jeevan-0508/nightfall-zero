@@ -40,6 +40,8 @@ export function SettingsScreen() {
   const setScreenShakeIntensity = useSettingsStore((s) => s.setScreenShakeIntensity)
   const colorblindMode = useSettingsStore((s) => s.colorblindMode)
   const setColorblindMode = useSettingsStore((s) => s.setColorblindMode)
+  const autoAim = useSettingsStore((s) => s.autoAim)
+  const setAutoAim = useSettingsStore((s) => s.setAutoAim)
   const keybinds = useSettingsStore((s) => s.keybinds)
   const setKeybind = useSettingsStore((s) => s.setKeybind)
   const resetKeybinds = useSettingsStore((s) => s.resetKeybinds)
@@ -127,6 +129,23 @@ export function SettingsScreen() {
             onChange={(e) => setColorblindMode(e.target.checked)}
           />
           <span className="settings-hint">Swaps the boss-alive vignette tint away from low-health red</span>
+        </div>
+
+        <div className="settings-row settings-row-toggle">
+          <label className="settings-label" htmlFor="auto-aim">
+            AUTO-AIM
+          </label>
+          <input
+            id="auto-aim"
+            className="settings-checkbox"
+            type="checkbox"
+            checked={autoAim}
+            onChange={(e) => setAutoAim(e.target.checked)}
+          />
+          <span className="settings-hint">
+            Locks onto the nearest enemy once your mouse sits still - move it and manual aim takes back over instantly.
+            Also toggleable mid-run from the HUD, below the minimap.
+          </span>
         </div>
 
         <div className="settings-keybinds">
