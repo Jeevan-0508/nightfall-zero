@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GameEngine } from '../game/engine/GameEngine'
 import { createEnemy } from '../game/entities/factories'
-import { walker, brute } from '../content/enemies'
+import { walker, brute, spitter } from '../content/enemies'
 import type { InputState } from '../game/engine/types'
 
 function idleInput(overrides: Partial<InputState> = {}): InputState {
@@ -59,5 +59,63 @@ describe('GameEngine combat loop', () => {
     expect(snapshot.weaponName).toBe('Assault Rifle')
     expect(snapshot.magazineSize).toBe(30)
     expect(snapshot.status).toBe('playing')
+  })
+})
+
+describe('status effects integration', () => {
+  it('flamethrower fire applies a burn status that keeps damaging after contact stops', () => {
+    const engine = new GameEngine(5, 'flamethrower')
+    engine.player.position = { x: 100, y: 100 }
+    const target = createEnemy(walker, { x: 140, y: 100 })
+    engine.enemyList.push(target)
+
+    const input = idleInput({ aimX: 140, aimY: 100, firing: true })
+    for (let i = 0; i < 10 && target.alive; i++) {
+      engine.update(1 / 60, input)
+    }
+
+    expect(target.alive).toBe(true)
+    expect(target.statuses.some((s) => s.type === 'burn')).toBe(true)
+
+    const healthAfterContact = target.health
+    for (let i = 0; i < 30 && target.alive; i++) {
+      engine.update(1 / 60, idleInput())
+    }
+
+    expect(target.health).toBeLessThan(healthAfterContact)
+  })
+
+  it('a critical hit applies a brief slow status', () => {
+    const engine = new GameEngine(6, 'pistol')
+    engine.player.upgrades.critChanceBonus = 1
+    engine.player.position = { x: 100, y: 100 }
+    const target = createEnemy(brute, { x: 300, y: 100 })
+    engine.enemyList.push(target)
+
+    const input = idleInput({ aimX: 300, aimY: 100, firing: true })
+    for (let i = 0; i < 120 && target.alive && !target.statuses.some((s) => s.type === 'slow'); i++) {
+      engine.update(1 / 60, input)
+    }
+
+    expect(target.statuses.some((s) => s.type === 'slow')).toBe(true)
+  })
+
+  it('explosion survivors near (but not directly hit by) a rocket are marked as more vulnerable', () => {
+    const engine = new GameEngine(7, 'rocket-launcher')
+    engine.player.position = { x: 100, y: 100 }
+    const directHit = createEnemy(brute, { x: 260, y: 100 })
+    engine.enemyList.push(directHit)
+    const splashTarget = createEnemy(brute, { x: 300, y: 100 })
+    engine.enemyList.push(splashTarget)
+    const farTarget = createEnemy(spitter, { x: 700, y: 700 })
+    engine.enemyList.push(farTarget)
+
+    const input = idleInput({ aimX: 260, aimY: 100, firing: true })
+    for (let i = 0; i < 60 && splashTarget.alive && !splashTarget.statuses.some((s) => s.type === 'mark'); i++) {
+      engine.update(1 / 60, input)
+    }
+
+    expect(splashTarget.statuses.some((s) => s.type === 'mark')).toBe(true)
+    expect(farTarget.statuses).toHaveLength(0)
   })
 })

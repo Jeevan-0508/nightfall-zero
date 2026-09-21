@@ -2,6 +2,7 @@ import type { Enemy, EnemyDefinition, Particle } from '../engine/types'
 import type { Vector2 } from '../engine/vector'
 import { distance } from '../engine/vector'
 import { applyDamage } from './damage'
+import { applyStatus, getDamageTakenMultiplier, MARK_DURATION, MARK_MULTIPLIER } from './statusEffects'
 import type { Rng } from '../engine/rng'
 import { spawnDeathBurst, spawnExplosion, spawnImpact } from '../engine/particles'
 
@@ -38,11 +39,14 @@ export function resolveExplosion(
 
     enemiesHit.push(enemy)
     spawnImpact(particles, rng, enemy.position, 3)
-    const died = applyDamage(enemy, damage)
+    const scaledDamage = damage * getDamageTakenMultiplier(enemy)
+    const died = applyDamage(enemy, scaledDamage)
     if (died) {
       enemy.alive = false
       spawnDeathBurst(particles, rng, enemy.position, def.color)
       enemiesKilled.push(enemy)
+    } else {
+      applyStatus(enemy, 'mark', MARK_DURATION, MARK_MULTIPLIER)
     }
   }
 

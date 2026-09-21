@@ -104,6 +104,7 @@ export function createEnemy(def: EnemyDefinition, position: Vector2, elite = fal
     bossTimer: def.behavior === 'boss' ? (def.bossAttackInterval ?? 3.5) : 0,
     bossLockedDir: { x: 0, y: 0 },
     elite,
+    statuses: [],
   }
 }
 

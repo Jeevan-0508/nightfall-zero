@@ -1,6 +1,7 @@
 import type { Enemy, EnemyDefinition, Obstacle, Player } from '../engine/types'
 import { normalize, subtract, scale, distance } from '../engine/vector'
 import { resolveObstacleCollisions } from '../collision/collision'
+import { getSlowMultiplier } from '../combat/statusEffects'
 
 function computeSeparation(enemy: Enemy, def: EnemyDefinition, others: Enemy[]) {
   let separation = { x: 0, y: 0 }
@@ -24,7 +25,7 @@ function stepPosition(
   dt: number,
   obstacles: Obstacle[],
 ): void {
-  enemy.velocity = scale(dir, speed)
+  enemy.velocity = scale(dir, speed * getSlowMultiplier(enemy))
   const moved = {
     x: enemy.position.x + enemy.velocity.x * dt,
     y: enemy.position.y + enemy.velocity.y * dt,

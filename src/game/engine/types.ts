@@ -116,6 +116,15 @@ export interface Player {
 export type BossPhase = 'idle' | 'telegraph' | 'attack'
 export type BossAttackId = 'slam' | 'charge' | 'barrage'
 
+export type StatusEffectType = 'burn' | 'slow' | 'mark'
+
+/** A timed debuff on an enemy. Reapplying the same type refreshes duration/magnitude rather than stacking. */
+export interface StatusEffect {
+  type: StatusEffectType
+  remaining: number // seconds left
+  magnitude: number // burn: damage/sec, slow: speed multiplier, mark: damage-taken multiplier
+}
+
 export interface Enemy {
   id: number
   defId: string
@@ -134,6 +143,7 @@ export interface Enemy {
   bossTimer: number
   bossLockedDir: Vector2
   elite: boolean
+  statuses: StatusEffect[]
 }
 
 export interface Projectile {

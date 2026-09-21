@@ -35,6 +35,15 @@ import { createTelemetryState, updateTelemetry, type TelemetryState } from '../d
 import { applyMetaUpgrades } from '../meta/metaProgression'
 import { getGameMode, defaultGameMode, type GameModeDefinition } from '../../content/gameModes'
 import { applyDamage } from '../combat/damage'
+import {
+  applyStatus,
+  tickStatuses,
+  getDamageTakenMultiplier,
+  BURN_DURATION,
+  BURN_DPS,
+  SLOW_DURATION,
+  SLOW_MULTIPLIER,
+} from '../combat/statusEffects'
 import { applyUpgradesToWeapon, tickWeaponTimers, tryFire } from '../combat/weapons'
 import { resolveExplosion } from '../combat/explosions'
 import { circleIntersectsAnyObstacle, circlesIntersect, resolveObstacleCollisions } from '../collision/collision'
@@ -431,10 +440,12 @@ export class GameEngine {
         if (enemy.attackCooldown > 0) enemy.attackCooldown = Math.max(0, enemy.attackCooldown - dt)
         if (enemy.hitFlash > 0) enemy.hitFlash = Math.max(0, enemy.hitFlash - dt)
         this.resolveBossAttack(enemy, def, bossResult.resolveAttack)
+        this.applyBurnTick(enemy, def, dt)
         continue
       }
 
       updateEnemyMovement(enemy, def, this.player, aliveEnemies, dt, this.map.obstacles)
+      this.applyBurnTick(enemy, def, dt)
 
       const shot = tryRangedAttack(enemy, def, this.player)
       if (shot) {
@@ -444,6 +455,14 @@ export class GameEngine {
         this.pushEvent('enemySpit')
       }
     }
+  }
+
+  /** Advances the enemy's statuses and applies this tick's burn damage, if any, through the shared death branch. */
+  private applyBurnTick(enemy: Enemy, def: EnemyDefinition, dt: number): void {
+    const burnDamage = tickStatuses(enemy, dt)
+    if (burnDamage <= 0 || !enemy.alive) return
+    const died = applyDamage(enemy, burnDamage)
+    this.finalizeEnemyDeath(enemy, def, died)
   }
 
   private resolveBossAttack(enemy: Enemy, def: EnemyDefinition, attackId: BossAttackId | null): void {
@@ -537,20 +556,29 @@ export class GameEngine {
   private applyProjectileHit(projectile: Projectile, enemy: Enemy, def: EnemyDefinition): void {
     this.stats.shotsHit += 1
     enemy.hitFlash = 0.12
-    const died = applyDamage(enemy, projectile.damage)
+    const scaledDamage = Math.round(projectile.damage * getDamageTakenMultiplier(enemy))
+    const died = applyDamage(enemy, scaledDamage)
     spawnImpact(this.particles, this.rng, enemy.position)
     spawnHitMarker(this.particles, enemy.position, projectile.isCrit)
-    spawnDamageText(this.particles, enemy.position, projectile.damage, projectile.isCrit)
+    spawnDamageText(this.particles, enemy.position, scaledDamage, projectile.isCrit)
     this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_HIT)
     this.pushEvent(projectile.isCrit ? 'critHit' : 'hit')
-    if (died) {
-      enemy.alive = false
-      if (def.explosionDamage && def.explosionRadius) {
-        this.detonateEnemy(enemy, def)
-      } else {
-        spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
-        this.notifyKill(def, enemy.elite)
-      }
+    if (!died) {
+      if (projectile.weaponId === 'flamethrower') applyStatus(enemy, 'burn', BURN_DURATION, BURN_DPS)
+      if (projectile.isCrit) applyStatus(enemy, 'slow', SLOW_DURATION, SLOW_MULTIPLIER)
+    }
+    this.finalizeEnemyDeath(enemy, def, died)
+  }
+
+  /** Shared death branch for any damage source (direct hit or passive burn tick): explode if the enemy is an Exploder, otherwise a plain death burst + kill credit. */
+  private finalizeEnemyDeath(enemy: Enemy, def: EnemyDefinition, died: boolean): void {
+    if (!died) return
+    enemy.alive = false
+    if (def.explosionDamage && def.explosionRadius) {
+      this.detonateEnemy(enemy, def)
+    } else {
+      spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
+      this.notifyKill(def, enemy.elite)
     }
   }
 

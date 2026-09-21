@@ -1,5 +1,6 @@
 import type { GameEngine } from '../engine/GameEngine'
 import { ARENA_HEIGHT, ARENA_WIDTH } from '../engine/types'
+import type { Enemy, EnemyDefinition } from '../engine/types'
 import { enemies as enemyDefs } from '../../content/enemies'
 
 const GRID_SIZE = 48
@@ -688,6 +689,16 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
       drawEliteHalo(ctx, def.radius, engine.stats.survivalTime)
     }
 
+    if (enemy.statuses.some((s) => s.type === 'burn')) {
+      ctx.beginPath()
+      ctx.shadowColor = 'rgba(255, 120, 40, 0.8)'
+      ctx.shadowBlur = 10
+      ctx.fillStyle = 'rgba(255, 120, 40, 0.22)'
+      ctx.arc(0, 0, def.radius * 0.65, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.shadowBlur = 0
+    }
+
     ctx.rotate(facing)
     const bodyColor = enemy.hitFlash > 0 ? '#ffffff' : def.color
     drawEnemyBody(ctx, def.behavior, enemy.defId, def.radius, bodyColor)
@@ -705,11 +716,29 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
       ctx.fillRect(-barWidth / 2, -def.radius - 10, barWidth, 4)
       ctx.fillStyle = healthRatio > 0.5 ? '#7fd858' : healthRatio > 0.25 ? '#e0b23a' : '#e0473a'
       ctx.fillRect(-barWidth / 2, -def.radius - 10, barWidth * healthRatio, 4)
+      if (enemy.statuses.length > 0) drawStatusIcons(ctx, enemy, def)
     }
 
     ctx.globalAlpha = 1
     ctx.restore()
   }
+}
+
+/** Small colored dots above the health bar, one per active status (burn/slow/mark), so a debuffed enemy reads at a glance. */
+function drawStatusIcons(ctx: CanvasRenderingContext2D, enemy: Enemy, def: EnemyDefinition): void {
+  const STATUS_COLOR: Record<string, string> = { burn: '#ff7a3d', slow: '#5be3e3', mark: '#ff4d6a' }
+  const iconY = -def.radius - 17
+  let iconX = -((enemy.statuses.length - 1) * 7) / 2
+  for (const status of enemy.statuses) {
+    ctx.beginPath()
+    ctx.fillStyle = STATUS_COLOR[status.type] ?? '#ffffff'
+    ctx.shadowColor = ctx.fillStyle
+    ctx.shadowBlur = 4
+    ctx.arc(iconX, iconY, 2.5, 0, Math.PI * 2)
+    ctx.fill()
+    iconX += 7
+  }
+  ctx.shadowBlur = 0
 }
 
 function drawEnemyBody(
