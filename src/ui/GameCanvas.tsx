@@ -203,6 +203,7 @@ export function GameCanvas() {
         if (target) {
           input.aimX = target.position.x
           input.aimY = target.position.y
+          input.firing = true
         }
       }
 

@@ -79,8 +79,8 @@ and the same inputs, and it replays byte-for-byte, which is also how every mecha
 | **ESC** | Pause / resume |
 
 A HUD button below the minimap (and a matching checkbox in Settings) toggles **auto-aim**: leave the mouse
-still for a moment and the reticle snaps to and tracks the nearest living enemy on its own, still fully
-overridden the instant you move the mouse again.
+still for a moment and it locks onto and fires at the nearest living enemy on its own, standing its ground until
+you move the mouse again, which hands manual aim and fire straight back to you.
 
 Pick a starting weapon on the loadout screen, then survive. Every wave adds more enemies; every five waves, a
 boss. Level up mid-run to choose from randomized stat upgrades. Every run also earns scrap, spendable in the

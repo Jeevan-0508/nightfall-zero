@@ -143,8 +143,8 @@ export function SettingsScreen() {
             onChange={(e) => setAutoAim(e.target.checked)}
           />
           <span className="settings-hint">
-            Locks onto the nearest enemy once your mouse sits still - move it and manual aim takes back over instantly.
-            Also toggleable mid-run from the HUD, below the minimap.
+            Once your mouse sits still, locks onto and fires at the nearest enemy on its own - move the mouse and
+            manual aim/fire takes back over instantly. Also toggleable mid-run from the HUD, below the minimap.
           </span>
         </div>
 
