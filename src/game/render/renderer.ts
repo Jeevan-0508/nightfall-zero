@@ -194,6 +194,25 @@ function mapPalette(engine: GameEngine): MapPalette {
   return MAP_PALETTES[engine.map.id] ?? MAP_PALETTES.crossroads
 }
 
+// The sky gradient only depends on the current map's palette, not on anything that changes
+// frame-to-frame - rebuilding it every draw() call was pure waste. Cache the last built gradient
+// and only recreate it when the map (or canvas context) actually changes.
+let cachedSkyGradient: CanvasGradient | null = null
+let cachedSkyMapId: string | null = null
+let cachedSkyCtx: CanvasRenderingContext2D | null = null
+
+function skyGradient(ctx: CanvasRenderingContext2D, palette: MapPalette, mapId: string): CanvasGradient {
+  if (cachedSkyGradient && cachedSkyMapId === mapId && cachedSkyCtx === ctx) return cachedSkyGradient
+  const sky = ctx.createLinearGradient(0, 0, 0, ARENA_HEIGHT)
+  sky.addColorStop(0, palette.skyTop)
+  sky.addColorStop(0.35, palette.skyMid)
+  sky.addColorStop(1, palette.skyBottom)
+  cachedSkyGradient = sky
+  cachedSkyMapId = mapId
+  cachedSkyCtx = ctx
+  return sky
+}
+
 const WEAPON_TRACER_COLOR: Record<string, string> = {
   pistol: '#ffcf6a',
   shotgun: '#ffb04d',
@@ -209,11 +228,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, engine: GameEngine): void
   const t = engine.stats.survivalTime
 
   const palette = mapPalette(engine)
-  const sky = ctx.createLinearGradient(0, 0, 0, ARENA_HEIGHT)
-  sky.addColorStop(0, palette.skyTop)
-  sky.addColorStop(0.35, palette.skyMid)
-  sky.addColorStop(1, palette.skyBottom)
-  ctx.fillStyle = sky
+  ctx.fillStyle = skyGradient(ctx, palette, engine.map.id)
   ctx.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT)
 
   drawSkyline(ctx)
