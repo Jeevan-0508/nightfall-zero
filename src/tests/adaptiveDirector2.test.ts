@@ -126,3 +126,48 @@ describe('GameEngine telemetry integration', () => {
     expect(engine.getHudSnapshot().debug.accuracy).toBeCloseTo(0.75, 5)
   })
 })
+
+describe('GameEngine director counter announcements', () => {
+  it('fires a director toast and event exactly once when the player profile leaves balanced', () => {
+    const engine = new GameEngine(52)
+    engine.player.position = { x: 480, y: 300 }
+    engine.enemyList.push(createEnemy(walker, { x: 630, y: 300 }))
+
+    let directorEvents = 0
+    for (let i = 0; i < 700; i++) {
+      engine.update(1 / 60, idleInput())
+      directorEvents += engine.drainEvents().filter((e) => e.type === 'directorAnalysis').length
+    }
+
+    expect(engine.telemetry.profile).toBe('camper')
+    expect(directorEvents).toBe(1)
+  })
+
+  it('does not re-announce the same profile while the announce cooldown is active', () => {
+    const engine = new GameEngine(53)
+    engine.player.position = { x: 480, y: 300 }
+    engine.enemyList.push(createEnemy(walker, { x: 630, y: 300 }))
+
+    for (let i = 0; i < 400; i++) engine.update(1 / 60, idleInput())
+    engine.drainEvents()
+
+    for (let i = 0; i < 400; i++) engine.update(1 / 60, idleInput())
+    const laterEvents = engine.drainEvents().filter((e) => e.type === 'directorAnalysis')
+
+    expect(laterEvents.length).toBe(0)
+  })
+
+  it('never announces the balanced profile', () => {
+    const engine = new GameEngine(54)
+    engine.player.position = { x: 480, y: 300 }
+
+    let directorEvents = 0
+    for (let i = 0; i < 60; i++) {
+      engine.update(1 / 60, idleInput())
+      directorEvents += engine.drainEvents().filter((e) => e.type === 'directorAnalysis').length
+    }
+
+    expect(engine.telemetry.profile).toBe('balanced')
+    expect(directorEvents).toBe(0)
+  })
+})

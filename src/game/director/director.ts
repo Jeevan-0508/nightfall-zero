@@ -168,3 +168,29 @@ export function applyWeaponProfileCounter(queue: string[], profile: WeaponProfil
   if (!rankMap || Object.keys(rankMap).length === 0) return
   applyDirectorBias(queue, 1, rankMap)
 }
+
+/**
+ * Player-facing label for a just-detected playstyle, shown once as a "DIRECTOR // ANALYSIS"
+ * toast (not a generic popup) exactly when applyProfileCounter starts actually pulling a
+ * different enemy forward for it - null for 'balanced', which has nothing to counter.
+ */
+export function describeProfileCounter(profile: PlayerProfile): string | null {
+  switch (profile) {
+    case 'kiter': return 'KITING DETECTED // DEPLOYING PURSUIT UNITS'
+    case 'camper': return 'HOLDING POSITION DETECTED // DEPLOYING AOE PRESSURE'
+    case 'edgeHugger': return 'PERIMETER PLAY DETECTED // DEPLOYING FLANKERS'
+    case 'brawler': return 'CLOSE-QUARTERS DETECTED // DEPLOYING RANGED PRESSURE'
+    default: return null
+  }
+}
+
+/** Same idea as describeProfileCounter, for the weapon-usage signal instead of movement. */
+export function describeWeaponProfileCounter(profile: WeaponProfile): string | null {
+  switch (profile) {
+    case 'sniper': return 'LONG-RANGE LOADOUT DETECTED // CLOSING DISTANCE'
+    case 'flamethrower': return 'CLOSE-RANGE LOADOUT DETECTED // APPLYING RANGED PRESSURE'
+    case 'explosive': return 'AOE LOADOUT DETECTED // DEPLOYING NUMBERS'
+    case 'energy': return 'PIERCE LOADOUT DETECTED // DEPLOYING FLANKERS'
+    default: return null
+  }
+}

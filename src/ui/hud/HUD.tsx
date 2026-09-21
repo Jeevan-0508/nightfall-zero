@@ -100,7 +100,10 @@ export function HUD() {
       )}
 
       {snapshot.eventToast && (
-        <div key={snapshot.eventToast.text} className="hud-event-toast">
+        <div
+          key={snapshot.eventToast.text}
+          className={`hud-event-toast${snapshot.eventToast.kind === 'director' ? ' hud-event-toast--director' : ''}`}
+        >
           {snapshot.eventToast.text}
         </div>
       )}

@@ -297,6 +297,7 @@ export type EngineEventType =
   | 'huntedStart'
   | 'supplyDropSpawned'
   | 'supplyDropCollected'
+  | 'directorAnalysis'
 
 export interface EngineEvent {
   type: EngineEventType
@@ -363,5 +364,5 @@ export interface HudSnapshot {
   radarBlips: { id: number; x: number; y: number; boss: boolean }[]
   debug: DirectorDebugInfo
   runEvent: { kind: 'blackout' | 'hunted' | 'supplyDrop'; remaining: number; totalDuration: number } | null
-  eventToast: { text: string } | null
+  eventToast: { text: string; kind?: 'director' } | null
 }

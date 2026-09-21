@@ -34,8 +34,8 @@ import { updateBoss } from '../ai/bossAI'
 import { tryRangedAttack } from '../combat/rangedAttack'
 import { abilityOrder } from '../../content/abilities'
 import { tickAbilityTimers, tryActivate } from '../combat/abilities'
-import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, applyProfileCounter, applyWeaponProfileCounter, type DirectorState } from '../director/director'
-import { createTelemetryState, updateTelemetry, recordWeaponShot, type TelemetryState } from '../director/telemetry'
+import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, applyProfileCounter, applyWeaponProfileCounter, describeProfileCounter, describeWeaponProfileCounter, type DirectorState } from '../director/director'
+import { createTelemetryState, updateTelemetry, recordWeaponShot, type TelemetryState, type PlayerProfile, type WeaponProfile } from '../director/telemetry'
 import { applyMetaUpgrades } from '../meta/metaProgression'
 import { getGameMode, defaultGameMode, type GameModeDefinition } from '../../content/gameModes'
 import { applyDamage } from '../combat/damage'
@@ -131,6 +131,7 @@ const PICKUP_COLLECT_RADIUS = 30
 const HUNTED_INTERVAL_MULTIPLIER = 0.55
 const HUNTED_BIAS_BONUS = 0.6
 const EVENT_TOAST_DURATION = 2.6
+const DIRECTOR_ANNOUNCE_COOLDOWN = 20
 
 export class GameEngine {
   player: Player
@@ -160,6 +161,12 @@ export class GameEngine {
   private bossEntranceTimer = 0
   private eventToastText: string | null = null
   private eventToastTimer = 0
+  private eventToastKind: 'director' | undefined = undefined
+  /** What the Director toast last announced, so it fires once on the transition into a
+   * detected playstyle/loadout, not every tick the classification happens to still hold. */
+  private lastAnnouncedProfile: PlayerProfile = 'balanced'
+  private lastAnnouncedWeaponProfile: WeaponProfile = 'balanced'
+  private directorAnnounceCooldown = 0
   map: MapDefinition
   mode: GameModeDefinition
   readonly seed: number
@@ -222,9 +229,27 @@ export class GameEngine {
     this.events.push(sourcePosition ? { type, sourcePosition } : { type })
   }
 
-  private showEventToast(text: string): void {
+  private showEventToast(text: string, kind?: 'director'): void {
     this.eventToastText = text
     this.eventToastTimer = EVENT_TOAST_DURATION
+    this.eventToastKind = kind
+  }
+
+  private announceDirectorCounter(): void {
+    const profileChanged = this.telemetry.profile !== this.lastAnnouncedProfile
+    const weaponProfileChanged = this.telemetry.weaponProfile !== this.lastAnnouncedWeaponProfile
+    if (!profileChanged && !weaponProfileChanged) return
+
+    const label = profileChanged
+      ? describeProfileCounter(this.telemetry.profile)
+      : describeWeaponProfileCounter(this.telemetry.weaponProfile)
+    if (profileChanged) this.lastAnnouncedProfile = this.telemetry.profile
+    if (weaponProfileChanged) this.lastAnnouncedWeaponProfile = this.telemetry.weaponProfile
+    if (!label || this.directorAnnounceCooldown > 0) return
+
+    this.showEventToast(`DIRECTOR // ANALYSIS: ${label}`, 'director')
+    this.pushEvent('directorAnalysis')
+    this.directorAnnounceCooldown = DIRECTOR_ANNOUNCE_COOLDOWN
   }
 
   update(dt: number, input: InputState): void {
@@ -245,6 +270,7 @@ export class GameEngine {
     this.updatePickups(dt)
     tickRunEvent(this.runEvents, dt)
     if (this.eventToastTimer > 0) this.eventToastTimer = Math.max(0, this.eventToastTimer - dt)
+    if (this.directorAnnounceCooldown > 0) this.directorAnnounceCooldown = Math.max(0, this.directorAnnounceCooldown - dt)
     this.updateSpawning(dt)
     this.updateEnemies(dt)
     this.resolveProjectileHits(dt)
@@ -266,6 +292,7 @@ export class GameEngine {
       nearestEnemyDistance,
       playerPosition: this.player.position,
     })
+    this.announceDirectorCounter()
 
     updateDirector(this.director, dt, {
       damageTaken: Math.max(0, healthArmorBefore - (this.player.health + this.player.armor)),
@@ -930,7 +957,7 @@ export class GameEngine {
             totalDuration: this.runEvents.active.totalDuration,
           }
         : null,
-      eventToast: this.eventToastTimer > 0 && this.eventToastText ? { text: this.eventToastText } : null,
+      eventToast: this.eventToastTimer > 0 && this.eventToastText ? { text: this.eventToastText, kind: this.eventToastKind } : null,
       debug: {
         intensity: this.director.intensity,
         calmActive: this.director.calmTimer > 0,
