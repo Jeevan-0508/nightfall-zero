@@ -191,6 +191,18 @@ button {
   transform: translateY(-2px);
 }
 
+.menu-continue {
+  background: #2f8fb8;
+  font-size: 15px;
+  padding: 12px 40px;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.menu-continue:hover {
+  background: #3aa8d4;
+}
+
 .menu-armory {
   display: block;
   margin: 10px auto 0;

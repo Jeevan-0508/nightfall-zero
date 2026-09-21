@@ -1,5 +1,6 @@
 import { useGameStore } from '../../store/gameStore'
 import { useMetaStore } from '../../store/metaStore'
+import { loadRunFromStorage } from '../../game/engine/persistence'
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -11,6 +12,8 @@ export function MainMenu() {
   const goToLoadout = useGameStore((s) => s.goToLoadout)
   const goToArmory = useGameStore((s) => s.goToArmory)
   const goToSettings = useGameStore((s) => s.goToSettings)
+  const startResumedRun = useGameStore((s) => s.startResumedRun)
+  const savedRun = loadRunFromStorage()
   const totalRuns = useMetaStore((s) => s.totalRuns)
   const totalKills = useMetaStore((s) => s.totalKills)
   const bestSurvivalTime = useMetaStore((s) => s.bestSurvivalTime)
@@ -43,8 +46,13 @@ export function MainMenu() {
             </div>
           </div>
         )}
+        {savedRun && (
+          <button className="menu-play menu-continue" onClick={startResumedRun}>
+            CONTINUE - WAVE {savedRun.waveIndex} &middot; {formatTime(savedRun.stats.survivalTime)}
+          </button>
+        )}
         <button className="menu-play" onClick={goToLoadout}>
-          PLAY
+          {savedRun ? 'NEW RUN' : 'PLAY'}
         </button>
         <button className="menu-armory" onClick={goToArmory}>
           ARMORY

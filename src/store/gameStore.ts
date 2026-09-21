@@ -32,6 +32,7 @@ interface GameStore {
   seedInput: string
   paused: boolean
   debugPanelOpen: boolean
+  resumeRequested: boolean
   goToLoadout: () => void
   goToArmory: () => void
   goToSettings: () => void
@@ -41,6 +42,7 @@ interface GameStore {
   setPaused: (paused: boolean) => void
   toggleDebugPanel: () => void
   startRun: () => void
+  startResumedRun: () => void
   endRun: (result: RunResult) => void
   returnToMenu: () => void
   setPendingUpgrades: (choices: UpgradeOption[] | null, onChoose: ((id: string) => void) | null) => void
@@ -59,6 +61,7 @@ export const useGameStore = create<GameStore>((set) => ({
   seedInput: '',
   paused: false,
   debugPanelOpen: false,
+  resumeRequested: false,
   goToLoadout: () => set({ view: 'loadout' }),
   goToArmory: () => set({ view: 'armory' }),
   goToSettings: () => set({ view: 'settings' }),
@@ -67,8 +70,9 @@ export const useGameStore = create<GameStore>((set) => ({
   setSeedInput: (seedInput) => set({ seedInput }),
   setPaused: (paused) => set({ paused }),
   toggleDebugPanel: () => set((s) => ({ debugPanelOpen: !s.debugPanelOpen })),
-  startRun: () => set((s) => ({ view: 'playing', runId: s.runId + 1, lastResult: null, pendingUpgrades: null, paused: false })),
-  endRun: (result) => set({ view: 'gameover', lastResult: result, pendingUpgrades: null, paused: false }),
+  startRun: () => set((s) => ({ view: 'playing', runId: s.runId + 1, lastResult: null, pendingUpgrades: null, paused: false, resumeRequested: false })),
+  startResumedRun: () => set((s) => ({ view: 'playing', runId: s.runId + 1, lastResult: null, pendingUpgrades: null, paused: false, resumeRequested: true })),
+  endRun: (result) => set({ view: 'gameover', lastResult: result, pendingUpgrades: null, paused: false, resumeRequested: false }),
   returnToMenu: () => set({ view: 'menu', paused: false }),
   setPendingUpgrades: (choices, onChoose) => {
     onChooseUpgrade = onChoose

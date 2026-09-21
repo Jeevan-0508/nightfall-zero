@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { GameEngine } from '../game/engine/GameEngine'
 import { ARENA_HEIGHT, ARENA_WIDTH, type InputState } from '../game/engine/types'
 import { findNearestAliveEnemy } from '../game/combat/autoAim'
+import { clearRunFromStorage, loadRunFromStorage, restoreRun, saveRunToStorage } from '../game/engine/persistence'
 import { draw, type HitIndicator } from '../game/render/renderer'
 import { useHudStore } from '../store/hudStore'
 import { useGameStore } from '../store/gameStore'
@@ -35,6 +36,10 @@ import {
 /** Manual mouse aim always wins - auto-aim only takes the wheel once the mouse has sat still
  * this long, so a real move interrupts it on the very next frame. */
 const AUTO_AIM_IDLE_MS = 220
+
+/** How often an in-progress run is checkpointed to localStorage so closing the tab (or a crash)
+ * never loses more than a few seconds of progress - see game/engine/persistence.ts. */
+const AUTOSAVE_INTERVAL_MS = 4000
 
 const WEAPON_SWITCH_KEYS: Record<string, string> = {
   Digit1: weaponOrder[0].id,
@@ -74,7 +79,12 @@ export function GameCanvas() {
       : seedInput.trim()
         ? hashSeed(seedInput.trim())
         : undefined
-    const engine = new GameEngine(numericSeed, selectedWeaponId, upgradeRanks, selectedModeId)
+
+    const resumeSave = useGameStore.getState().resumeRequested ? loadRunFromStorage() : null
+    if (useGameStore.getState().resumeRequested) useGameStore.setState({ resumeRequested: false })
+    const engine = resumeSave
+      ? restoreRun(resumeSave)
+      : new GameEngine(numericSeed, selectedWeaponId, upgradeRanks, selectedModeId)
     const input: InputState = {
       up: false,
       down: false,
@@ -108,7 +118,11 @@ export function GameCanvas() {
     function onKeyDown(e: KeyboardEvent) {
       if (e.code === 'Escape') {
         const store = useGameStore.getState()
-        if (!store.pendingUpgrades) store.setPaused(!store.paused)
+        if (!store.pendingUpgrades) {
+          const nowPaused = !store.paused
+          store.setPaused(nowPaused)
+          if (nowPaused && engine.status === 'playing') saveRunToStorage(engine)
+        }
         e.preventDefault()
         return
       }
@@ -172,6 +186,7 @@ export function GameCanvas() {
     let lastUpgradeChoices = engine.pendingUpgradeChoices
     const hitIndicators: HitIndicator[] = []
     let deathStartTime: number | null = null
+    let lastAutosaveTs = performance.now()
 
     function tick(now: number) {
       const dt = Math.min(0.05, (now - lastTime) / 1000)
@@ -197,8 +212,16 @@ export function GameCanvas() {
       for (const indicator of hitIndicators) indicator.alpha -= dt * 1.6
       while (hitIndicators.length > 0 && hitIndicators[0].alpha <= 0) hitIndicators.shift()
 
-      if (engine.status === 'dead' && deathStartTime === null) deathStartTime = now
+      if (engine.status === 'dead' && deathStartTime === null) {
+        deathStartTime = now
+        clearRunFromStorage()
+      }
       const deathProgress = deathStartTime !== null ? Math.min(1, (now - deathStartTime) / 700) : 0
+
+      if (engine.status === 'playing' && now - lastAutosaveTs > AUTOSAVE_INTERVAL_MS) {
+        saveRunToStorage(engine)
+        lastAutosaveTs = now
+      }
 
       draw(ctx!, engine, { hitIndicators, deathProgress, reducedMotion, shakeIntensity: screenShakeIntensity, colorblindMode })
       setSnapshot(engine.getHudSnapshot())
