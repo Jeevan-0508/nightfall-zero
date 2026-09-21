@@ -44,6 +44,15 @@ import {
   SLOW_DURATION,
   SLOW_MULTIPLIER,
 } from '../combat/statusEffects'
+import {
+  rollEliteModifier,
+  getArmorMultiplier,
+  absorbShield,
+  tickEliteRegen,
+  tickEliteTeleport,
+  EXPLOSIVE_DAMAGE,
+  EXPLOSIVE_RADIUS,
+} from '../combat/eliteModifiers'
 import { applyUpgradesToWeapon, tickWeaponTimers, tryFire } from '../combat/weapons'
 import { resolveExplosion } from '../combat/explosions'
 import { circleIntersectsAnyObstacle, circlesIntersect, resolveObstacleCollisions } from '../collision/collision'
@@ -421,9 +430,10 @@ export class GameEngine {
     this.pushEvent('bossSpawn')
   }
 
-  /** Creates an enemy and applies the active mode's health multiplier. */
+  /** Creates an enemy and applies the active mode's health multiplier. An elite spawn also rolls exactly one flavor modifier. */
   private spawnEnemy(def: EnemyDefinition, position: Vector2, elite = false): Enemy {
-    const enemy = createEnemy(def, position, elite)
+    const modifier = elite ? rollEliteModifier(this.rng) : null
+    const enemy = createEnemy(def, position, elite, modifier)
     enemy.health *= this.mode.enemyHealthMultiplier
     enemy.maxHealth *= this.mode.enemyHealthMultiplier
     return enemy
@@ -446,6 +456,8 @@ export class GameEngine {
 
       updateEnemyMovement(enemy, def, this.player, aliveEnemies, dt, this.map.obstacles)
       this.applyBurnTick(enemy, def, dt)
+      tickEliteRegen(enemy, dt)
+      this.applyEliteTeleportTick(enemy, dt)
 
       const shot = tryRangedAttack(enemy, def, this.player)
       if (shot) {
@@ -463,6 +475,14 @@ export class GameEngine {
     if (burnDamage <= 0 || !enemy.alive) return
     const died = applyDamage(enemy, burnDamage)
     this.finalizeEnemyDeath(enemy, def, died)
+  }
+
+  /** A Teleporting elite blinks to a fresh safe spot (same distance/obstacle rules as a spawn point) once its warning window elapses. */
+  private applyEliteTeleportTick(enemy: Enemy, dt: number): void {
+    if (!tickEliteTeleport(enemy, dt)) return
+    spawnSpawnRing(this.particles, enemy.position)
+    enemy.position = pickSpawnPosition(this.rng, this.player.position, this.map.obstacles)
+    spawnSpawnRing(this.particles, enemy.position)
   }
 
   private resolveBossAttack(enemy: Enemy, def: EnemyDefinition, attackId: BossAttackId | null): void {
@@ -556,12 +576,15 @@ export class GameEngine {
   private applyProjectileHit(projectile: Projectile, enemy: Enemy, def: EnemyDefinition): void {
     this.stats.shotsHit += 1
     enemy.hitFlash = 0.12
-    const scaledDamage = Math.round(projectile.damage * getDamageTakenMultiplier(enemy))
+    const rawDamage =
+      projectile.damage * getDamageTakenMultiplier(enemy) * getArmorMultiplier(enemy, projectile.isCrit)
+    const { remainingDamage, justBroke } = absorbShield(enemy, rawDamage)
+    const scaledDamage = Math.round(remainingDamage)
     const died = applyDamage(enemy, scaledDamage)
-    spawnImpact(this.particles, this.rng, enemy.position)
+    spawnImpact(this.particles, this.rng, enemy.position, justBroke ? 9 : 5)
     spawnHitMarker(this.particles, enemy.position, projectile.isCrit)
     spawnDamageText(this.particles, enemy.position, scaledDamage, projectile.isCrit)
-    this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_HIT)
+    this.screenShake = Math.max(this.screenShake, justBroke ? SCREEN_SHAKE_EXPLOSION * 0.5 : SCREEN_SHAKE_HIT)
     this.pushEvent(projectile.isCrit ? 'critHit' : 'hit')
     if (!died) {
       if (projectile.weaponId === 'flamethrower') applyStatus(enemy, 'burn', BURN_DURATION, BURN_DPS)
@@ -570,11 +593,11 @@ export class GameEngine {
     this.finalizeEnemyDeath(enemy, def, died)
   }
 
-  /** Shared death branch for any damage source (direct hit or passive burn tick): explode if the enemy is an Exploder, otherwise a plain death burst + kill credit. */
+  /** Shared death branch for any damage source (direct hit or passive burn tick): explode if the enemy is an Exploder OR an Explosive elite, otherwise a plain death burst + kill credit. */
   private finalizeEnemyDeath(enemy: Enemy, def: EnemyDefinition, died: boolean): void {
     if (!died) return
     enemy.alive = false
-    if (def.explosionDamage && def.explosionRadius) {
+    if ((def.explosionDamage && def.explosionRadius) || enemy.eliteModifier === 'explosive') {
       this.detonateEnemy(enemy, def)
     } else {
       spawnDeathBurst(this.particles, this.rng, enemy.position, def.color)
@@ -582,13 +605,14 @@ export class GameEngine {
     }
   }
 
-  /** Deals falloff-scaled area damage to the player and reports the enemy as killed (Exploder). */
+  /** Deals falloff-scaled area damage to the player and reports the enemy as killed. Falls back to the Explosive-elite constants when the enemy's own def has no built-in explosion (any roster enemy can roll Explosive, not just Exploder). */
   private detonateEnemy(enemy: Enemy, def: EnemyDefinition): void {
+    const damage = def.explosionDamage ?? EXPLOSIVE_DAMAGE
+    const radius = def.explosionRadius ?? EXPLOSIVE_RADIUS
     const dist = distance(enemy.position, this.player.position)
-    const radius = def.explosionRadius ?? 0
-    if (radius > 0 && dist <= radius && def.explosionDamage) {
+    if (radius > 0 && dist <= radius && damage) {
       const falloff = Math.max(0.3, 1 - dist / radius)
-      this.applyDamageToPlayer(Math.round(def.explosionDamage * falloff * (enemy.elite ? ELITE_DAMAGE_MULTIPLIER : 1)))
+      this.applyDamageToPlayer(Math.round(damage * falloff * (enemy.elite ? ELITE_DAMAGE_MULTIPLIER : 1)))
     }
     spawnExplosion(this.particles, enemy.position, radius)
     this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)

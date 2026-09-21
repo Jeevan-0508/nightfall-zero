@@ -125,6 +125,8 @@ export interface StatusEffect {
   magnitude: number // burn: damage/sec, slow: speed multiplier, mark: damage-taken multiplier
 }
 
+export type EliteModifier = 'armored' | 'frenzied' | 'regenerating' | 'shielded' | 'explosive' | 'teleporting'
+
 export interface Enemy {
   id: number
   defId: string
@@ -144,6 +146,10 @@ export interface Enemy {
   bossLockedDir: Vector2
   elite: boolean
   statuses: StatusEffect[]
+  eliteModifier: EliteModifier | null
+  shieldRemaining: number
+  teleportTimer: number
+  teleportWarning: boolean
 }
 
 export interface Projectile {

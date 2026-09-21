@@ -1,6 +1,7 @@
 import type { GameEngine } from '../engine/GameEngine'
 import { ARENA_HEIGHT, ARENA_WIDTH } from '../engine/types'
 import type { Enemy, EnemyDefinition } from '../engine/types'
+import { SHIELD_CAPACITY } from '../combat/eliteModifiers'
 import { enemies as enemyDefs } from '../../content/enemies'
 
 const GRID_SIZE = 48
@@ -656,12 +657,30 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
 
     ctx.globalAlpha = enemy.cloaked ? 0.25 : 1
 
-    if (def.explosionRadius) {
+    if (def.explosionRadius || enemy.eliteModifier === 'explosive') {
       const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 9) * 0.5
       ctx.beginPath()
       ctx.arc(0, 0, def.radius + 4 + pulse * 4, 0, Math.PI * 2)
       ctx.strokeStyle = `rgba(224, 71, 58, ${0.3 + pulse * 0.4})`
       ctx.lineWidth = 2
+      ctx.stroke()
+    }
+
+    if (enemy.eliteModifier === 'shielded' && enemy.shieldRemaining > 0) {
+      const shieldRatio = enemy.shieldRemaining / SHIELD_CAPACITY
+      ctx.beginPath()
+      ctx.arc(0, 0, def.radius + 5, 0, Math.PI * 2 * shieldRatio)
+      ctx.strokeStyle = 'rgba(90, 180, 255, 0.75)'
+      ctx.lineWidth = 3
+      ctx.stroke()
+    }
+
+    if (enemy.teleportWarning) {
+      const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 24) * 0.5
+      ctx.beginPath()
+      ctx.arc(0, 0, def.radius + 6 + pulse * 5, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(200, 90, 255, ${0.45 + pulse * 0.4})`
+      ctx.lineWidth = 2.5
       ctx.stroke()
     }
 
@@ -700,7 +719,7 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
     }
 
     ctx.rotate(facing)
-    const bodyColor = enemy.hitFlash > 0 ? '#ffffff' : def.color
+    const bodyColor = enemy.hitFlash > 0 ? '#ffffff' : enemy.eliteModifier === 'frenzied' ? '#ff4d4d' : def.color
     drawEnemyBody(ctx, def.behavior, enemy.defId, def.radius, bodyColor)
     ctx.rotate(-facing)
 

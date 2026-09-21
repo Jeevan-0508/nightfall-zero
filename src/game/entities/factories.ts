@@ -2,6 +2,7 @@ import type {
   AbilityDefinition,
   AbilityState,
   Enemy,
+  EliteModifier,
   EnemyDefinition,
   EnemyProjectile,
   Grenade,
@@ -12,6 +13,7 @@ import type {
 } from '../engine/types'
 import type { Vector2 } from '../engine/vector'
 import type { Rng } from '../engine/rng'
+import { SHIELD_CAPACITY, TELEPORT_INTERVAL } from '../combat/eliteModifiers'
 
 /** Elite spawns start appearing from wave 3, ramping to a 22% cap by wave 12+. Tougher and harder-hitting, worth more XP on the kill. */
 export const ELITE_HEALTH_MULTIPLIER = 1.5
@@ -83,7 +85,12 @@ export function createPlayer(
   }
 }
 
-export function createEnemy(def: EnemyDefinition, position: Vector2, elite = false): Enemy {
+export function createEnemy(
+  def: EnemyDefinition,
+  position: Vector2,
+  elite = false,
+  eliteModifier: EliteModifier | null = null,
+): Enemy {
   const healthScale = elite ? ELITE_HEALTH_MULTIPLIER : 1
   enemyIdCounter += 1
   return {
@@ -105,6 +112,10 @@ export function createEnemy(def: EnemyDefinition, position: Vector2, elite = fal
     bossLockedDir: { x: 0, y: 0 },
     elite,
     statuses: [],
+    eliteModifier,
+    shieldRemaining: eliteModifier === 'shielded' ? SHIELD_CAPACITY : 0,
+    teleportTimer: eliteModifier === 'teleporting' ? TELEPORT_INTERVAL : 0,
+    teleportWarning: false,
   }
 }
 

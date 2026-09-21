@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GameEngine } from '../game/engine/GameEngine'
 import { createEnemy } from '../game/entities/factories'
+import { SHIELD_CAPACITY } from '../game/combat/eliteModifiers'
 import { walker, brute, spitter } from '../content/enemies'
 import type { InputState } from '../game/engine/types'
 
@@ -117,5 +118,51 @@ describe('status effects integration', () => {
 
     expect(splashTarget.statuses.some((s) => s.type === 'mark')).toBe(true)
     expect(farTarget.statuses).toHaveLength(0)
+  })
+})
+
+describe('elite modifiers integration', () => {
+  it('an Armored elite takes reduced damage from a non-crit hit but full damage from a crit', () => {
+    const engineNonCrit = new GameEngine(8, 'pistol')
+    engineNonCrit.player.upgrades.critChanceBonus = -1 // force every hit to roll as non-crit
+    engineNonCrit.player.position = { x: 100, y: 100 }
+    const armoredTarget = createEnemy(brute, { x: 200, y: 100 }, true, 'armored')
+    const startHealth = armoredTarget.health
+    engineNonCrit.enemyList.push(armoredTarget)
+    const nonCritInput = idleInput({ aimX: 200, aimY: 100, firing: true })
+    for (let i = 0; i < 30 && armoredTarget.health === startHealth; i++) {
+      engineNonCrit.update(1 / 60, nonCritInput)
+    }
+    const nonCritDamage = startHealth - armoredTarget.health
+
+    const engineCrit = new GameEngine(8, 'pistol')
+    engineCrit.player.upgrades.critChanceBonus = 1 // force every hit to crit
+    engineCrit.player.position = { x: 100, y: 100 }
+    const armoredTarget2 = createEnemy(brute, { x: 200, y: 100 }, true, 'armored')
+    engineCrit.enemyList.push(armoredTarget2)
+    const critInput = idleInput({ aimX: 200, aimY: 100, firing: true })
+    for (let i = 0; i < 30 && armoredTarget2.health === startHealth; i++) {
+      engineCrit.update(1 / 60, critInput)
+    }
+    const critDamage = startHealth - armoredTarget2.health
+
+    expect(nonCritDamage).toBeGreaterThan(0)
+    expect(critDamage).toBeGreaterThan(nonCritDamage)
+  })
+
+  it('a Shielded elite absorbs damage into its shield before health drops', () => {
+    const engine = new GameEngine(9, 'pistol')
+    engine.player.position = { x: 100, y: 100 }
+    const target = createEnemy(brute, { x: 200, y: 100 }, true, 'shielded')
+    engine.enemyList.push(target)
+    expect(target.shieldRemaining).toBe(SHIELD_CAPACITY)
+
+    const input = idleInput({ aimX: 200, aimY: 100, firing: true })
+    for (let i = 0; i < 30 && target.shieldRemaining === SHIELD_CAPACITY; i++) {
+      engine.update(1 / 60, input)
+    }
+
+    expect(target.health).toBe(target.maxHealth)
+    expect(target.shieldRemaining).toBeLessThan(SHIELD_CAPACITY)
   })
 })
