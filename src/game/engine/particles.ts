@@ -6,6 +6,50 @@ import { rangeFloat } from './rng'
 
 let particleIdCounter = 0
 
+/** Hard ceiling on live particles, so a chaotic screen (many simultaneous deaths/explosions/impacts)
+ * degrades gracefully instead of growing the array without bound. */
+const MAX_PARTICLES = 500
+
+/** CRITICAL > HIGH > MEDIUM > LOW. Always-visible combat feedback outranks purely cosmetic flourish,
+ * so when the cap is hit, ambient/decorative particles are the ones evicted, never gameplay signal. */
+function particlePriority(kind: ParticleKind): number {
+  switch (kind) {
+    case 'hitmarker':
+    case 'damageText':
+      return 3
+    case 'impact':
+    case 'death':
+    case 'explosion':
+      return 2
+    case 'muzzle':
+    case 'spawnRing':
+    case 'dashTrail':
+      return 1
+    case 'shell':
+      return 0
+  }
+}
+
+/** Makes room for a particle of `incomingPriority` by evicting the single lowest-priority existing
+ * particle at or below that priority. Returns false (spawn should be skipped) if the array is at
+ * capacity and every existing particle already outranks the incoming one. */
+function makeRoomFor(particles: Particle[], incomingPriority: number): boolean {
+  if (particles.length < MAX_PARTICLES) return true
+  let evictIndex = -1
+  let evictPriority = Infinity
+  for (let i = 0; i < particles.length; i++) {
+    const p = particlePriority(particles[i].kind)
+    if (p <= incomingPriority && p < evictPriority) {
+      evictPriority = p
+      evictIndex = i
+      if (p === 0) break
+    }
+  }
+  if (evictIndex === -1) return false
+  particles.splice(evictIndex, 1)
+  return true
+}
+
 function spawn(
   particles: Particle[],
   kind: ParticleKind,
@@ -17,6 +61,7 @@ function spawn(
   crit?: boolean,
   radius?: number,
 ): void {
+  if (!makeRoomFor(particles, particlePriority(kind))) return
   particleIdCounter += 1
   particles.push({ id: particleIdCounter, kind, position: { ...position }, velocity, age: 0, ttl, color, text, crit, radius })
 }
