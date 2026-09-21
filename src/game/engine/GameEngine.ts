@@ -22,6 +22,9 @@ import type {
 import { ARENA_HEIGHT, ARENA_WIDTH } from './types'
 import { weapons, weaponOrder, assaultRifle } from '../../content/weapons'
 import { enemies as enemyDefs, overlord, executioner } from '../../content/enemies'
+
+/** Largest enemy radius across all definitions, so a projectile-hit spatial query always covers the biggest possible target. */
+const MAX_ENEMY_RADIUS_FOR_HIT_QUERY = Math.max(...Object.values(enemyDefs).map((d) => d.radius))
 import { pickMap } from '../../content/maps'
 import { getWaveDefinition } from '../../content/waves'
 import { createEnemy, createEnemyProjectile, createGrenade, createPickup, createPlayer, rollElite, ELITE_DAMAGE_MULTIPLIER, ELITE_XP_MULTIPLIER } from '../entities/factories'
@@ -77,6 +80,7 @@ import {
  * spawn-ring particle and bossSpawn audio cue rather than adding new VFX/audio. */
 const BOSS_ENTRANCE_DURATION = 1.2
 import { circleIntersectsAnyObstacle, circlesIntersect, resolveObstacleCollisions } from '../collision/collision'
+import { SpatialGrid } from '../collision/spatialGrid'
 import {
   createWaveState,
   notifyEnemyDeath,
@@ -154,6 +158,8 @@ export class GameEngine {
   private rng: Rng
   private nextWaveDelay = 0
   private events: EngineEvent[] = []
+  /** Shared broad-phase index for enemy separation and projectile-hit queries; rebuilt whenever positions may have changed since the last query (see updateEnemies/resolveProjectileHits). */
+  private readonly enemyGrid = new SpatialGrid<Enemy>(64)
 
   constructor(
     seed: number = Date.now(),
@@ -549,6 +555,7 @@ export class GameEngine {
 
   private updateEnemies(dt: number): void {
     const aliveEnemies = this.enemyList.filter((e) => e.alive)
+    this.enemyGrid.rebuild(aliveEnemies)
     for (const enemy of aliveEnemies) {
       const def = enemyDefs[enemy.defId]
       if (!def) continue
@@ -566,7 +573,7 @@ export class GameEngine {
         continue
       }
 
-      updateEnemyMovement(enemy, def, this.player, aliveEnemies, dt, this.map.obstacles)
+      updateEnemyMovement(enemy, def, this.player, this.enemyGrid, dt, this.map.obstacles)
       this.applyBurnTick(enemy, def, dt)
       tickEliteRegen(enemy, dt)
       this.applyEliteTeleportTick(enemy, dt)
@@ -649,11 +656,15 @@ export class GameEngine {
   }
 
   private resolveProjectileHits(): void {
+    // Enemies may have moved since updateEnemies() built the grid this tick, so it's rebuilt
+    // here with current positions before being used for hit queries.
+    this.enemyGrid.rebuild(this.enemyList.filter((e) => e.alive))
     const remainingProjectiles: Projectile[] = []
     for (const projectile of this.projectiles) {
       let hitEnemy: Enemy | null = null
 
-      for (const enemy of this.enemyList) {
+      const nearby = this.enemyGrid.queryRadius(projectile.position, projectile.radius + MAX_ENEMY_RADIUS_FOR_HIT_QUERY)
+      for (const enemy of nearby) {
         if (!enemy.alive || enemy.cloaked) continue
         const def = enemyDefs[enemy.defId]
         if (!def) continue

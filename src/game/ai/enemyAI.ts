@@ -1,15 +1,17 @@
 import type { Enemy, EnemyDefinition, Obstacle, Player } from '../engine/types'
 import { normalize, subtract, scale, distance } from '../engine/vector'
 import { resolveObstacleCollisions } from '../collision/collision'
+import type { SpatialGrid } from '../collision/spatialGrid'
 import { getSlowMultiplier } from '../combat/statusEffects'
 import { getEliteSpeedMultiplier } from '../combat/eliteModifiers'
 
-function computeSeparation(enemy: Enemy, def: EnemyDefinition, others: Enemy[]) {
+function computeSeparation(enemy: Enemy, def: EnemyDefinition, grid: SpatialGrid<Enemy>) {
   let separation = { x: 0, y: 0 }
-  for (const other of others) {
+  const combinedRadius = def.radius + 12
+  const nearby = grid.queryRadius(enemy.position, combinedRadius)
+  for (const other of nearby) {
     if (other.id === enemy.id || !other.alive) continue
     const d = distance(enemy.position, other.position)
-    const combinedRadius = def.radius + 12
     if (d > 0 && d < combinedRadius) {
       const push = normalize(subtract(enemy.position, other.position))
       separation = { x: separation.x + push.x, y: separation.y + push.y }
@@ -39,7 +41,7 @@ function updateMeleeMovement(
   enemy: Enemy,
   def: EnemyDefinition,
   player: Player,
-  others: Enemy[],
+  grid: SpatialGrid<Enemy>,
   dt: number,
   obstacles: Obstacle[],
 ): void {
@@ -52,7 +54,7 @@ function updateMeleeMovement(
     moveDir = normalize(toPlayer)
   }
 
-  const separation = computeSeparation(enemy, def, others)
+  const separation = computeSeparation(enemy, def, grid)
   const combined = normalize({
     x: moveDir.x + separation.x * 0.6,
     y: moveDir.y + separation.y * 0.6,
@@ -66,7 +68,7 @@ function updateRangedMovement(
   enemy: Enemy,
   def: EnemyDefinition,
   player: Player,
-  others: Enemy[],
+  grid: SpatialGrid<Enemy>,
   dt: number,
   obstacles: Obstacle[],
 ): void {
@@ -85,7 +87,7 @@ function updateRangedMovement(
     moveDir = normalize({ x: -toPlayer.y, y: toPlayer.x })
   }
 
-  const separation = computeSeparation(enemy, def, others)
+  const separation = computeSeparation(enemy, def, grid)
   const combined = normalize({
     x: moveDir.x + separation.x * 0.6,
     y: moveDir.y + separation.y * 0.6,
@@ -104,7 +106,7 @@ function updateStalkerMovement(
   enemy: Enemy,
   def: EnemyDefinition,
   player: Player,
-  others: Enemy[],
+  grid: SpatialGrid<Enemy>,
   dt: number,
   obstacles: Obstacle[],
 ): void {
@@ -122,7 +124,7 @@ function updateStalkerMovement(
   if (distToPlayer > minDistance) {
     moveDir = normalize(toPlayer)
   }
-  const separation = computeSeparation(enemy, def, others)
+  const separation = computeSeparation(enemy, def, grid)
   const combined = normalize({
     x: moveDir.x + separation.x * 0.6,
     y: moveDir.y + separation.y * 0.6,
@@ -134,16 +136,16 @@ export function updateEnemyMovement(
   enemy: Enemy,
   def: EnemyDefinition,
   player: Player,
-  others: Enemy[],
+  grid: SpatialGrid<Enemy>,
   dt: number,
   obstacles: Obstacle[],
 ): void {
   if (def.behavior === 'ranged') {
-    updateRangedMovement(enemy, def, player, others, dt, obstacles)
+    updateRangedMovement(enemy, def, player, grid, dt, obstacles)
   } else if (def.behavior === 'stalker') {
-    updateStalkerMovement(enemy, def, player, others, dt, obstacles)
+    updateStalkerMovement(enemy, def, player, grid, dt, obstacles)
   } else {
-    updateMeleeMovement(enemy, def, player, others, dt, obstacles)
+    updateMeleeMovement(enemy, def, player, grid, dt, obstacles)
   }
 
   if (enemy.attackCooldown > 0) {

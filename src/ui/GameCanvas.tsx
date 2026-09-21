@@ -41,6 +41,13 @@ const AUTO_AIM_IDLE_MS = 220
  * never loses more than a few seconds of progress - see game/engine/persistence.ts. */
 const AUTOSAVE_INTERVAL_MS = 4000
 
+/** The simulation and canvas render every animation frame (60fps), but the HUD only needs to look
+ * smooth to the eye, not tick with the frame - throttling its React/zustand write to this cadence
+ * stops health/minimap/counter components re-rendering 60 times a second for no visible benefit.
+ * Status-critical transitions (death, level-up) are read directly off the engine elsewhere in this
+ * file, not through this snapshot, so they're never delayed by the throttle. */
+const HUD_SNAPSHOT_INTERVAL_MS = 1000 / 15
+
 const WEAPON_SWITCH_KEYS: Record<string, string> = {
   Digit1: weaponOrder[0].id,
   Digit2: weaponOrder[1].id,
@@ -187,6 +194,7 @@ export function GameCanvas() {
     const hitIndicators: HitIndicator[] = []
     let deathStartTime: number | null = null
     let lastAutosaveTs = performance.now()
+    let lastHudSnapshotTs = 0
 
     function tick(now: number) {
       const dt = Math.min(0.05, (now - lastTime) / 1000)
@@ -225,7 +233,13 @@ export function GameCanvas() {
       }
 
       draw(ctx!, engine, { hitIndicators, deathProgress, reducedMotion, shakeIntensity: screenShakeIntensity, colorblindMode })
-      setSnapshot(engine.getHudSnapshot())
+      // Gameplay/render stay at 60fps above; the HUD (health bar, minimap, counters) only needs to
+      // repaint a few times a second, so its React/zustand write is throttled separately here to stop
+      // every subscribed HUD component re-rendering on every animation frame.
+      if (now - lastHudSnapshotTs >= HUD_SNAPSHOT_INTERVAL_MS) {
+        lastHudSnapshotTs = now
+        setSnapshot(engine.getHudSnapshot())
+      }
 
       if (engine.pendingUpgradeChoices !== lastUpgradeChoices) {
         lastUpgradeChoices = engine.pendingUpgradeChoices
