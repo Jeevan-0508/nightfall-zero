@@ -11,12 +11,32 @@ import type { Vector2 } from '../engine/vector'
  */
 export type PlayerProfile = 'balanced' | 'kiter' | 'brawler' | 'camper' | 'edgeHugger'
 
+/**
+ * Which weapon archetype the player is leaning on this run. Only the four
+ * weapons with a distinct combat identity get their own archetype (sniper's
+ * long-range precision, flamethrower's close-range DoT spam, rocket
+ * launcher's burst AoE, energy weapon's pierce); pistol/shotgun/smg/assault
+ * rifle are the "generic gun" baseline and never push the classification
+ * off 'balanced' on their own.
+ */
+export type WeaponProfile = 'balanced' | 'sniper' | 'flamethrower' | 'explosive' | 'energy'
+
+export const WEAPON_ARCHETYPE: Record<string, WeaponProfile> = {
+  sniper: 'sniper',
+  flamethrower: 'flamethrower',
+  'rocket-launcher': 'explosive',
+  'energy-weapon': 'energy',
+}
+
 export interface TelemetryState {
   sampleSeconds: number
   avgMovementSpeed: number // smoothed px/sec
   avgNearestEnemyDistance: number // smoothed px
   avgEdgeDistance: number // smoothed px to the nearest arena wall
   profile: PlayerProfile
+  weaponShotCounts: Record<WeaponProfile, number> // recency-weighted, decayed on every recorded shot
+  trackedShots: number // total archetype-weapon shots ever recorded (drives the classification gate)
+  weaponProfile: WeaponProfile
 }
 
 export interface TelemetrySample {
@@ -35,6 +55,10 @@ const CLOSE_RANGE_THRESHOLD = 90
 const FAR_RANGE_THRESHOLD = 220
 const EDGE_THRESHOLD = 70
 
+const WEAPON_MEMORY_DECAY = 0.985 // per recorded shot, so usage naturally shifts if the player switches weapons
+const MIN_SHOTS_FOR_WEAPON_CLASSIFICATION = 12
+const WEAPON_DOMINANCE_SHARE = 0.55
+
 export function createTelemetryState(): TelemetryState {
   return {
     sampleSeconds: 0,
@@ -42,6 +66,9 @@ export function createTelemetryState(): TelemetryState {
     avgNearestEnemyDistance: FAR_RANGE_THRESHOLD,
     avgEdgeDistance: Math.min(ARENA_WIDTH, ARENA_HEIGHT) / 2,
     profile: 'balanced',
+    weaponShotCounts: { balanced: 0, sniper: 0, flamethrower: 0, explosive: 0, energy: 0 },
+    trackedShots: 0,
+    weaponProfile: 'balanced',
   }
 }
 
@@ -67,4 +94,42 @@ function classifyProfile(state: TelemetryState): PlayerProfile {
   if (state.avgMovementSpeed >= KITE_SPEED_THRESHOLD && state.avgNearestEnemyDistance >= FAR_RANGE_THRESHOLD) return 'kiter'
   if (state.avgNearestEnemyDistance < CLOSE_RANGE_THRESHOLD) return 'brawler'
   return 'balanced'
+}
+
+/**
+ * Called once per shot fired. Decays every archetype's count first so usage
+ * is recency-weighted (switching weapons mid-run actually shifts the
+ * profile, it doesn't just average against everything fired since spawn),
+ * then adds this shot to its archetype, if it has one - a generic gun shot
+ * still decays the others but adds nothing, gently pulling the profile back
+ * toward 'balanced' the more a player mixes in baseline weapons.
+ */
+export function recordWeaponShot(state: TelemetryState, weaponId: string): void {
+  for (const key of Object.keys(state.weaponShotCounts) as WeaponProfile[]) {
+    state.weaponShotCounts[key] *= WEAPON_MEMORY_DECAY
+  }
+  const archetype = WEAPON_ARCHETYPE[weaponId]
+  if (archetype) {
+    state.weaponShotCounts[archetype] += 1
+    state.trackedShots += 1
+  }
+  state.weaponProfile = classifyWeaponProfile(state)
+}
+
+function classifyWeaponProfile(state: TelemetryState): WeaponProfile {
+  if (state.trackedShots < MIN_SHOTS_FOR_WEAPON_CLASSIFICATION) return 'balanced'
+
+  let total = 0
+  let topArchetype: WeaponProfile = 'balanced'
+  let topCount = 0
+  for (const key of Object.keys(state.weaponShotCounts) as WeaponProfile[]) {
+    const count = state.weaponShotCounts[key]
+    total += count
+    if (key !== 'balanced' && count > topCount) {
+      topCount = count
+      topArchetype = key
+    }
+  }
+  if (total <= 0) return 'balanced'
+  return topCount / total >= WEAPON_DOMINANCE_SHARE ? topArchetype : 'balanced'
 }

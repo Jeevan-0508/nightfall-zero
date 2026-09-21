@@ -1,6 +1,6 @@
 import type { GameEngine } from '../engine/GameEngine'
 import { ARENA_HEIGHT, ARENA_WIDTH } from '../engine/types'
-import type { BossStage, Enemy, EnemyDefinition } from '../engine/types'
+import type { BossStage, Enemy, EnemyDefinition, Projectile } from '../engine/types'
 import { SHIELD_CAPACITY } from '../combat/eliteModifiers'
 import { enemies as enemyDefs } from '../../content/enemies'
 
@@ -889,7 +889,17 @@ function drawGrenades(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
 }
 
 function drawProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
+  const t = engine.stats.survivalTime
   for (const p of engine.projectiles) {
+    if (p.weaponId === 'flamethrower') {
+      drawFlameProjectile(ctx, p, t)
+      continue
+    }
+    if (p.weaponId === 'energy-weapon') {
+      drawEnergyProjectile(ctx, p, t)
+      continue
+    }
+
     const speed = Math.hypot(p.velocity.x, p.velocity.y) || 1
     const trailLength = Math.min(22, speed * 0.045)
     const nx = p.velocity.x / speed
@@ -921,6 +931,67 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, engine: GameEngine): voi
     ctx.arc(p.position.x, p.position.y, p.radius * 0.7, 0, Math.PI * 2)
     ctx.fill()
   }
+}
+
+/** Flamethrower pellets read as a flickering gout of flame rather than a bullet: a
+ * flicker-sized radial core plus a faint wavering ring standing in for heat-shimmer. */
+function drawFlameProjectile(ctx: CanvasRenderingContext2D, p: Projectile, t: number): void {
+  const flicker = 0.75 + Math.sin(t * 26 + p.id) * 0.15 + Math.sin(t * 41 + p.id * 1.7) * 0.1
+  const coreRadius = p.radius * (1.6 + flicker * 0.6)
+
+  ctx.save()
+  const grad = ctx.createRadialGradient(p.position.x, p.position.y, 0, p.position.x, p.position.y, coreRadius)
+  grad.addColorStop(0, 'rgba(255, 240, 190, 0.95)')
+  grad.addColorStop(0.4, 'rgba(255, 140, 60, 0.85)')
+  grad.addColorStop(1, 'rgba(255, 90, 40, 0)')
+  ctx.fillStyle = grad
+  ctx.beginPath()
+  ctx.arc(p.position.x, p.position.y, coreRadius, 0, Math.PI * 2)
+  ctx.fill()
+
+  const shimmerRadius = coreRadius * (1.35 + Math.sin(t * 14 + p.id * 2.3) * 0.1)
+  ctx.beginPath()
+  ctx.strokeStyle = `rgba(255, 200, 140, ${0.12 + flicker * 0.08})`
+  ctx.lineWidth = 1.5
+  ctx.arc(p.position.x, p.position.y, shimmerRadius, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** Energy-weapon shots read as an arcing current rather than a straight tracer: a jittered
+ * zigzag trail (deterministic per-projectile via its id, so it doesn't swim between frames
+ * beyond the intended flicker) in place of the generic gradient line other guns use. */
+function drawEnergyProjectile(ctx: CanvasRenderingContext2D, p: Projectile, t: number): void {
+  const speed = Math.hypot(p.velocity.x, p.velocity.y) || 1
+  const nx = p.velocity.x / speed
+  const ny = p.velocity.y / speed
+  const perpX = -ny
+  const perpY = nx
+  const trailLength = Math.min(32, speed * 0.045)
+  const segments = 4
+  const seed = p.id * 13.37
+
+  ctx.save()
+  ctx.shadowColor = '#5be3e3'
+  ctx.shadowBlur = 8
+  ctx.strokeStyle = withAlpha('#bffcfc', 0.85)
+  ctx.lineWidth = p.radius * 1.1
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(p.position.x - nx * trailLength, p.position.y - ny * trailLength)
+  for (let i = 1; i <= segments; i++) {
+    const along = trailLength * (1 - i / segments)
+    const jitter = Math.sin(t * 30 + seed + i * 2.1) * p.radius * 0.9 * (i / segments)
+    ctx.lineTo(p.position.x - nx * along + perpX * jitter, p.position.y - ny * along + perpY * jitter)
+  }
+  ctx.lineTo(p.position.x, p.position.y)
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.beginPath()
+  ctx.fillStyle = '#eafffb'
+  ctx.arc(p.position.x, p.position.y, p.radius * 0.7, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 function drawParticlesUnder(ctx: CanvasRenderingContext2D, engine: GameEngine): void {

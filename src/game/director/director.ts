@@ -1,5 +1,5 @@
 import { clamp } from '../engine/vector'
-import type { PlayerProfile } from './telemetry'
+import type { PlayerProfile, WeaponProfile } from './telemetry'
 
 /**
  * The Adaptive Director watches how the run is going and nudges pacing in
@@ -134,6 +134,37 @@ export const PROFILE_COUNTER_RANK: Record<PlayerProfile, Record<string, number>>
  */
 export function applyProfileCounter(queue: string[], profile: PlayerProfile): void {
   const rankMap = PROFILE_COUNTER_RANK[profile]
+  if (!rankMap || Object.keys(rankMap).length === 0) return
+  applyDirectorBias(queue, 1, rankMap)
+}
+
+/**
+ * Which roster entry best punishes leaning on one weapon archetype, same
+ * counter-design intent as PROFILE_COUNTER_RANK but keyed off Director 3.0's
+ * weapon-usage signal instead of movement telemetry. A sniper main out-ranges
+ * everything but folds once something closes distance fast, so it sees more
+ * runners; a flamethrower main dominates up close but has no answer for
+ * pressure from outside its short range, so it sees more spitters; a rocket
+ * main deletes single targets but reloads slowly against numbers, so it sees
+ * more runners too; an energy main punches through lines of enemies but not
+ * one that ambushes from an angle it isn't holding, so it sees more stalkers.
+ */
+export const WEAPON_PROFILE_COUNTER_RANK: Record<WeaponProfile, Record<string, number>> = {
+  balanced: {},
+  sniper: { runner: 4, stalker: 2, spitter: 1, walker: 1, brute: 1, exploder: 1 },
+  flamethrower: { spitter: 4, runner: 2, walker: 1, brute: 1, stalker: 1, exploder: 1 },
+  explosive: { runner: 4, spitter: 2, walker: 1, brute: 1, stalker: 1, exploder: 1 },
+  energy: { stalker: 4, exploder: 2, walker: 1, brute: 1, runner: 1, spitter: 1 },
+}
+
+/**
+ * Pulls the roster entry that best counters the detected weapon profile to
+ * the front of the wave's own spawn queue. A no-op for 'balanced' and for
+ * any queue where the counter entry isn't present, mirroring
+ * applyProfileCounter exactly.
+ */
+export function applyWeaponProfileCounter(queue: string[], profile: WeaponProfile): void {
+  const rankMap = WEAPON_PROFILE_COUNTER_RANK[profile]
   if (!rankMap || Object.keys(rankMap).length === 0) return
   applyDirectorBias(queue, 1, rankMap)
 }

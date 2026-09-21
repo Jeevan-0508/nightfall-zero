@@ -30,8 +30,8 @@ import { updateBoss } from '../ai/bossAI'
 import { tryRangedAttack } from '../combat/rangedAttack'
 import { abilityOrder } from '../../content/abilities'
 import { tickAbilityTimers, tryActivate } from '../combat/abilities'
-import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, applyProfileCounter, type DirectorState } from '../director/director'
-import { createTelemetryState, updateTelemetry, type TelemetryState } from '../director/telemetry'
+import { createDirectorState, getSpawnModifier, updateDirector, applyDirectorBias, applyProfileCounter, applyWeaponProfileCounter, type DirectorState } from '../director/director'
+import { createTelemetryState, updateTelemetry, recordWeaponShot, type TelemetryState } from '../director/telemetry'
 import { applyMetaUpgrades } from '../meta/metaProgression'
 import { getGameMode, defaultGameMode, type GameModeDefinition } from '../../content/gameModes'
 import { applyDamage } from '../combat/damage'
@@ -306,6 +306,7 @@ export class GameEngine {
         this.recoilAmount = weapon.recoil
         spawnMuzzleFlash(this.particles, this.player.position, this.player.rotation, weapon.id)
         spawnShellCasing(this.particles, this.player.position, this.player.rotation)
+        recordWeaponShot(this.telemetry, weapon.id)
         this.pushEvent('shotFired')
       }
       if (!reloadingBeforeFire && state.reloading) this.pushEvent('reloadStart')
@@ -418,6 +419,7 @@ export class GameEngine {
       const modifier = getSpawnModifier(this.director)
       applyDirectorBias(this.wave.spawnQueue, modifier.toughEnemyBias)
       applyProfileCounter(this.wave.spawnQueue, this.telemetry.profile)
+      applyWeaponProfileCounter(this.wave.spawnQueue, this.telemetry.weaponProfile)
       const result = updateWaveManager(this.wave, dt, def.spawnIntervalMs * modifier.intervalMultiplier * this.mode.spawnIntervalMultiplier)
       if (result.spawnDefId) {
         const enemyDef = enemyDefs[result.spawnDefId]
@@ -595,6 +597,7 @@ export class GameEngine {
         if (projectile.pierceRemaining > 0) {
           projectile.pierceRemaining -= 1
           remainingProjectiles.push(projectile)
+          if (projectile.weaponId === 'energy-weapon') this.spawnPierceArc(projectile, hitEnemy)
         }
         continue
       }
@@ -605,6 +608,16 @@ export class GameEngine {
     if (this.enemyList.length > 200) {
       this.enemyList = this.enemyList.filter((e) => e.alive)
     }
+  }
+
+  /** Cyan glow bridging a piercing energy-weapon hit to where the beam continues, standing in for a lightning arc jumping to its next target. */
+  private spawnPierceArc(projectile: Projectile, hitEnemy: Enemy): void {
+    const speed = Math.hypot(projectile.velocity.x, projectile.velocity.y) || 1
+    const ahead = {
+      x: hitEnemy.position.x + (projectile.velocity.x / speed) * 26,
+      y: hitEnemy.position.y + (projectile.velocity.y / speed) * 26,
+    }
+    spawnDashTrail(this.particles, hitEnemy.position, ahead)
   }
 
   private applyProjectileHit(projectile: Projectile, enemy: Enemy, def: EnemyDefinition): void {
@@ -794,6 +807,7 @@ export class GameEngine {
         intensity: this.director.intensity,
         calmActive: this.director.calmTimer > 0,
         profile: this.telemetry.profile,
+        weaponProfile: this.telemetry.weaponProfile,
         avgMovementSpeed: this.telemetry.avgMovementSpeed,
         avgNearestEnemyDistance: this.telemetry.avgNearestEnemyDistance,
         avgEdgeDistance: this.telemetry.avgEdgeDistance,

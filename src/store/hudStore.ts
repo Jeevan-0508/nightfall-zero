@@ -32,6 +32,7 @@ const initialSnapshot: HudSnapshot = {
     intensity: 0,
     calmActive: false,
     profile: 'balanced',
+    weaponProfile: 'balanced',
     avgMovementSpeed: 0,
     avgNearestEnemyDistance: 0,
     avgEdgeDistance: 0,

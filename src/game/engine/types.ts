@@ -312,6 +312,7 @@ export interface DirectorDebugInfo {
   intensity: number
   calmActive: boolean
   profile: string
+  weaponProfile: string
   avgMovementSpeed: number
   avgNearestEnemyDistance: number
   avgEdgeDistance: number
