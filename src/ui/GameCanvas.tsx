@@ -265,22 +265,13 @@ export function GameCanvas() {
             break
           case 'playerHit': {
             playPlayerHit()
-            let nearest: { position: { x: number; y: number } } | null = null
-            let nearestDistSq = Infinity
-            for (const enemy of engine.enemyList) {
-              if (!enemy.alive) continue
-              const dx = enemy.position.x - engine.player.position.x
-              const dy = enemy.position.y - engine.player.position.y
-              const distSq = dx * dx + dy * dy
-              if (distSq < nearestDistSq) {
-                nearestDistSq = distSq
-                nearest = enemy
-              }
-            }
-            if (nearest) {
+            // The engine already knows exactly what hit the player (enemy or projectile position)
+            // and hands it over via sourcePosition, so this no longer needs to re-scan enemyList
+            // to guess the nearest one every time the player takes damage.
+            if (event.sourcePosition) {
               const angle = Math.atan2(
-                nearest.position.y - engine.player.position.y,
-                nearest.position.x - engine.player.position.x,
+                event.sourcePosition.y - engine.player.position.y,
+                event.sourcePosition.x - engine.player.position.x,
               )
               hitIndicators.push({ angle, alpha: 1 })
               if (hitIndicators.length > 6) hitIndicators.shift()

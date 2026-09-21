@@ -300,6 +300,10 @@ export type EngineEventType =
 
 export interface EngineEvent {
   type: EngineEventType
+  /** Where the damage/effect originated, when known (e.g. the enemy or projectile that hit the
+   * player). Lets UI code (hit-indicator arrows) point at the real source without re-scanning
+   * every enemy to guess which one it was. */
+  sourcePosition?: Vector2
 }
 
 export interface AbilityHudInfo {

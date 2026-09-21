@@ -209,8 +209,8 @@ export class GameEngine {
     return drained
   }
 
-  private pushEvent(type: EngineEventType): void {
-    this.events.push({ type })
+  private pushEvent(type: EngineEventType, sourcePosition?: Vector2): void {
+    this.events.push(sourcePosition ? { type, sourcePosition } : { type })
   }
 
   private showEventToast(text: string): void {
@@ -611,7 +611,7 @@ export class GameEngine {
       const radius = def.bossSlamRadius ?? 100
       if (distance(enemy.position, this.player.position) <= radius) {
         this.applyDamageToPlayer(def.bossSlamDamage ?? 20)
-        this.pushEvent('playerHit')
+        this.pushEvent('playerHit', enemy.position)
       }
       spawnExplosion(this.particles, enemy.position, radius)
       this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_EXPLOSION)
@@ -647,7 +647,7 @@ export class GameEngine {
         this.applyDamageToPlayer(p.damage)
         spawnImpact(this.particles, this.rng, p.position, 3)
         this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_HIT)
-        this.pushEvent('playerHit')
+        this.pushEvent('playerHit', p.position)
         continue
       }
       remaining.push(p)
@@ -799,7 +799,7 @@ export class GameEngine {
         enemy.attackCooldown = def.contactCooldown
         this.applyDamageToPlayer(enemy.elite ? def.contactDamage * ELITE_DAMAGE_MULTIPLIER : def.contactDamage)
         this.screenShake = Math.max(this.screenShake, SCREEN_SHAKE_PLAYER_HIT)
-        this.pushEvent('playerHit')
+        this.pushEvent('playerHit', enemy.position)
       }
     }
   }
