@@ -104,7 +104,12 @@ import {
 } from './particles'
 import type { WaveState } from './types'
 
-const PLAYER_SPEED = 220
+export const PLAYER_SPEED = 220
+
+// Where projectiles/muzzle-flash actually spawn from: just past the player's collision
+// edge along their aim, not the center - shared with the character renderer so the drawn
+// gun barrel's visible tip and the real fire point never drift apart.
+export const MUZZLE_OFFSET = 6
 const WAVE_CLEAR_DELAY = 2.2
 const SCREEN_SHAKE_HIT = 0.08
 const SCREEN_SHAKE_PLAYER_HIT = 0.18
@@ -139,6 +144,10 @@ export class GameEngine {
   stats: EngineStats = { kills: 0, shotsFired: 0, shotsHit: 0, survivalTime: 0, waveReached: 0 }
   status: GameStatus = 'playing'
   screenShake = 0
+  /** Mirrors Enemy.hitFlash: a short-lived visual-only timer bumped whenever the player takes
+   * any damage (single authoritative source: applyDamageToPlayer), decayed every tick. Purely
+   * for the character renderer's hit-stagger pose, never read by gameplay logic. */
+  playerHitFlash = 0
   comboCount = 0
   comboTimer = 0
   recoilAmount = 0
@@ -271,6 +280,7 @@ export class GameEngine {
       if (this.comboTimer === 0) this.comboCount = 0
     }
     if (this.recoilAmount > 0) this.recoilAmount = Math.max(0, this.recoilAmount - dt * RECOIL_RECOVERY_RATE)
+    if (this.playerHitFlash > 0) this.playerHitFlash = Math.max(0, this.playerHitFlash - dt * 6)
 
     if (this.player.health <= 0) {
       this.player.alive = false
@@ -335,8 +345,8 @@ export class GameEngine {
       // center - otherwise every shot visually originates from inside the player sprite.
       const facing = fromAngle(this.player.rotation)
       const muzzlePosition = {
-        x: this.player.position.x + facing.x * (this.player.radius + 6),
-        y: this.player.position.y + facing.y * (this.player.radius + 6),
+        x: this.player.position.x + facing.x * (this.player.radius + MUZZLE_OFFSET),
+        y: this.player.position.y + facing.y * (this.player.radius + MUZZLE_OFFSET),
       }
       const result = tryFire(muzzlePosition, this.player.rotation, state, weapon, this.rng)
       if (result.fired) {
@@ -837,6 +847,7 @@ export class GameEngine {
   }
 
   private applyDamageToPlayer(rawAmount: number): void {
+    if (rawAmount > 0) this.playerHitFlash = 0.16
     let amount = rawAmount * this.mode.enemyDamageMultiplier
     if (this.player.armor > 0) {
       const absorbed = Math.min(this.player.armor, amount)

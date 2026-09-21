@@ -3,6 +3,9 @@ import { ARENA_HEIGHT, ARENA_WIDTH } from '../engine/types'
 import type { BossStage, Enemy, EnemyDefinition, Projectile } from '../engine/types'
 import { SHIELD_CAPACITY } from '../combat/eliteModifiers'
 import { enemies as enemyDefs } from '../../content/enemies'
+import { drawPlayerCharacter } from './characters/playerCharacter'
+import { drawEnemyCharacter, drawEyesAtHead, type EnemyAnimInputs } from './characters/enemyCharacters'
+import { strideAmplitude as enemyStrideAmplitude, walkPhase as enemyWalkPhase } from './animation/animation'
 
 const GRID_SIZE = 48
 
@@ -105,7 +108,7 @@ export function draw(ctx: CanvasRenderingContext2D, engine: GameEngine, options:
   drawProjectiles(ctx, engine)
   drawEnemyProjectiles(ctx, engine)
   drawGrenades(ctx, engine)
-  drawPlayer(ctx, engine)
+  drawPlayerCharacter(ctx, engine)
   drawParticlesOver(ctx, engine, reducedMotion)
   drawDynamicLighting(ctx, engine)
   drawGroundFog(ctx, engine)
@@ -532,127 +535,7 @@ function drawPropScrapPile(ctx: CanvasRenderingContext2D, radius: number, seed: 
   ctx.restore()
 }
 
-function drawPlayer(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
-  const { position, rotation, radius, health, maxHealth } = engine.player
-  const recoilOffset = engine.recoilAmount
-  const drawX = position.x - Math.cos(rotation) * recoilOffset
-  const drawY = position.y - Math.sin(rotation) * recoilOffset
-  const isDead = engine.status === 'dead'
-  const healthRatio = maxHealth > 0 ? health / maxHealth : 1
-  const statusColor = isDead ? '#4a4a4a' : healthRatio > 0.5 ? '#3fd8a0' : healthRatio > 0.25 ? '#e0b23a' : '#e0473a'
-
-  ctx.save()
-  ctx.translate(position.x, position.y)
-  const auraPulse = isDead ? 0 : 0.6 + Math.sin(engine.stats.survivalTime * 3) * 0.4
-  ctx.beginPath()
-  ctx.arc(0, 0, radius + 7, 0, Math.PI * 2)
-  ctx.strokeStyle = statusColor
-  ctx.globalAlpha = 0.18 + auraPulse * 0.12
-  ctx.lineWidth = 2
-  ctx.stroke()
-  ctx.globalAlpha = 1
-
-  const equippedState = engine.player.weapons[engine.player.equippedWeaponId]
-  if (equippedState.reloading) {
-    const progress = 1 - equippedState.reloadRemaining / engine.weaponDef.reloadTime
-    ctx.beginPath()
-    ctx.arc(0, 0, radius + 11, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2)
-    ctx.strokeStyle = '#4f8cff'
-    ctx.lineWidth = 3
-    ctx.stroke()
-  }
-  ctx.restore()
-
-  ctx.save()
-  ctx.translate(drawX, drawY)
-  ctx.rotate(rotation)
-
-  ctx.beginPath()
-  ctx.ellipse(2, radius * 0.6, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
-  ctx.fill()
-
-  const bodyGrad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, radius * 0.2, 0, 0, radius)
-  if (isDead) {
-    bodyGrad.addColorStop(0, '#4a4a4a')
-    bodyGrad.addColorStop(1, '#232323')
-  } else {
-    bodyGrad.addColorStop(0, '#5fa4f2')
-    bodyGrad.addColorStop(1, '#28599e')
-  }
-  ctx.beginPath()
-  ctx.arc(0, 0, radius, 0, Math.PI * 2)
-  ctx.fillStyle = bodyGrad
-  ctx.fill()
-  ctx.strokeStyle = '#dbe9ff'
-  ctx.lineWidth = 2
-  ctx.stroke()
-
-  ctx.fillStyle = isDead ? 'rgba(120,120,120,0.5)' : 'rgba(20, 30, 50, 0.55)'
-  ctx.beginPath()
-  ctx.ellipse(-radius * 0.15, 0, radius * 0.7, radius * 0.42, 0, 0, Math.PI * 2)
-  ctx.fill()
-
-  if (!isDead) {
-    ctx.beginPath()
-    ctx.fillStyle = '#bdf3ff'
-    ctx.shadowColor = '#7fe9ff'
-    ctx.shadowBlur = 6
-    ctx.arc(radius * 0.35, 0, 2.4, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.shadowBlur = 0
-  }
-
-  ctx.beginPath()
-  ctx.moveTo(radius - 2, -3)
-  ctx.lineTo(radius + 17, -3)
-  ctx.lineTo(radius + 17, 3)
-  ctx.lineTo(radius - 2, 3)
-  ctx.closePath()
-  ctx.fillStyle = isDead ? '#5a5a5a' : '#1c2634'
-  ctx.fill()
-  ctx.strokeStyle = '#dbe9ff'
-  ctx.lineWidth = 1
-  ctx.stroke()
-
-  ctx.restore()
-}
-
-// ---------- Enemy silhouettes ----------
-
-function drawSpikedBlob(
-  ctx: CanvasRenderingContext2D,
-  radius: number,
-  spikeCount: number,
-  spikeRatio: number,
-): void {
-  ctx.beginPath()
-  for (let i = 0; i < spikeCount * 2; i++) {
-    const angle = (i / (spikeCount * 2)) * Math.PI * 2
-    const r = i % 2 === 0 ? radius : radius * spikeRatio
-    const px = Math.cos(angle) * r
-    const py = Math.sin(angle) * r
-    if (i === 0) ctx.moveTo(px, py)
-    else ctx.lineTo(px, py)
-  }
-  ctx.closePath()
-}
-
-function drawEyes(ctx: CanvasRenderingContext2D, radius: number, facing: number, color: string): void {
-  const spread = radius * 0.32
-  const forward = radius * 0.45
-  for (const side of [-1, 1]) {
-    const ex = Math.cos(facing) * forward + Math.cos(facing + Math.PI / 2) * spread * side
-    const ey = Math.sin(facing) * forward + Math.sin(facing + Math.PI / 2) * spread * side
-    ctx.beginPath()
-    ctx.fillStyle = color
-    ctx.shadowColor = color
-    ctx.shadowBlur = 5
-    ctx.arc(ex, ey, 1.6, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  ctx.shadowBlur = 0
-}
+// ---------- Enemy silhouettes: src/game/render/characters/enemyCharacters.ts ----------
 
 function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   for (const enemy of engine.enemyList) {
@@ -737,13 +620,19 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
 
     ctx.rotate(facing)
     const bodyColor = enemy.hitFlash > 0 ? '#ffffff' : enemy.eliteModifier === 'frenzied' ? '#ff4d4d' : def.color
-    drawEnemyBody(ctx, def.behavior, enemy.defId, def.radius, bodyColor)
-    ctx.rotate(-facing)
-
-    if (!enemy.cloaked || def.behavior === 'stalker') {
-      const eyeColor = def.behavior === 'stalker' && enemy.cloaked ? 'rgba(255,255,255,0.85)' : '#fff6d0'
-      drawEyes(ctx, def.radius, facing, eyeColor)
+    const speedRatio = speed / 90
+    const anim: EnemyAnimInputs = {
+      t: engine.stats.survivalTime,
+      walkPhase: enemyWalkPhase(engine.stats.survivalTime, speedRatio),
+      strideAmplitude: enemyStrideAmplitude(speedRatio),
+      speedRatio,
     }
+    const headResult = drawEnemyCharacter(ctx, enemy, def, bodyColor, anim)
+    if (headResult && (!enemy.cloaked || def.behavior === 'stalker')) {
+      const eyeColor = def.behavior === 'stalker' && enemy.cloaked ? 'rgba(255,255,255,0.85)' : '#fff6d0'
+      drawEyesAtHead(ctx, headResult.head, eyeColor)
+    }
+    ctx.rotate(-facing)
 
     if (!enemy.cloaked) {
       const barWidth = def.radius * 2
@@ -775,73 +664,6 @@ function drawStatusIcons(ctx: CanvasRenderingContext2D, enemy: Enemy, def: Enemy
     iconX += 7
   }
   ctx.shadowBlur = 0
-}
-
-function drawEnemyBody(
-  ctx: CanvasRenderingContext2D,
-  behavior: string,
-  defId: string,
-  radius: number,
-  color: string,
-): void {
-  ctx.fillStyle = color
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)'
-  ctx.lineWidth = 2
-
-  if (behavior === 'melee') {
-    const spikeCount = defId === 'brute' ? 5 : defId === 'runner' ? 9 : 7
-    const spikeRatio = defId === 'brute' ? 0.82 : 0.68
-    drawSpikedBlob(ctx, radius, spikeCount, spikeRatio)
-    ctx.fill()
-    ctx.stroke()
-    return
-  }
-
-  if (behavior === 'ranged') {
-    ctx.beginPath()
-    ctx.ellipse(radius * 0.15, 0, radius * 1.05, radius * 0.85, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
-    ctx.shadowColor = color
-    ctx.shadowBlur = 6
-    ctx.arc(radius * 0.75, 0, 2.4, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.shadowBlur = 0
-    return
-  }
-
-  if (behavior === 'stalker') {
-    ctx.beginPath()
-    ctx.arc(0, 0, radius, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
-    ctx.strokeStyle = color
-    ctx.lineWidth = 1.5
-    for (const a of [-0.5, 0, 0.5]) {
-      ctx.beginPath()
-      ctx.moveTo(radius * 0.5, a * radius)
-      ctx.lineTo(radius * 1.4, a * radius * 1.6)
-      ctx.stroke()
-    }
-    return
-  }
-
-  if (behavior === 'boss') {
-    const spikeCount = defId === 'overlord' ? 10 : 8
-    const spikeRatio = defId === 'overlord' ? 0.88 : 0.72
-    drawSpikedBlob(ctx, radius, spikeCount, spikeRatio)
-    ctx.fill()
-    ctx.lineWidth = 3
-    ctx.stroke()
-    return
-  }
-
-  ctx.beginPath()
-  ctx.arc(0, 0, radius, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.stroke()
 }
 
 /** Faster, tighter, gold-toned pulse ring than the boss aura, so an elite reads as "tougher regular" not "boss". */
