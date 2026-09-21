@@ -63,7 +63,7 @@ export function MainMenu() {
         <p className="menu-hint">WASD to move &middot; Mouse to aim &middot; Click to fire &middot; 1-8 to switch weapons &middot; SHIFT to dash &middot; Q for grenade &middot; E to overcharge</p>
         <p className="menu-footer">SAME NIGHT. A DIFFERENT YOU.</p>
         <div className="menu-credit">
-          <img src="/jk-mark.png" alt="" className="menu-credit-mark" />
+          <img src={`${import.meta.env.BASE_URL}jk-mark.png`} alt="" className="menu-credit-mark" />
           <span>MADE BY JEEVAN SIDDHABHAKTULA</span>
         </div>
       </div>

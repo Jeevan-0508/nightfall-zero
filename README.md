@@ -135,6 +135,11 @@ spawn pacing and enemy mix in response, the same idea as Left 4 Dead's AI Direct
 It cannot spawn a boss early or skip a wave; it only leans the existing wave definitions toward more or less
 pressure.
 
+A second, independent read on play style (camper, kiter, brawler, edge-hugger, or a weapon-loadout equivalent)
+reorders the spawn queue toward whichever enemy type counters it, e.g. pulling Runners forward against a kiter
+or Exploders forward against a camper. The first time a read actually changes, a "DIRECTOR // ANALYSIS" readout
+surfaces on-screen so the adaptation is visible instead of a hidden mechanic, on a cooldown so it can't spam.
+
 ## ⚡ Run Events
 
 From wave 3 onward, every wave start has a chance to roll one of three timed events, never two at once, with a
