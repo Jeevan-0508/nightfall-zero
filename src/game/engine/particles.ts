@@ -8,7 +8,7 @@ let particleIdCounter = 0
 
 /** Hard ceiling on live particles, so a chaotic screen (many simultaneous deaths/explosions/impacts)
  * degrades gracefully instead of growing the array without bound. */
-const MAX_PARTICLES = 500
+export const MAX_PARTICLES = 500
 
 /** CRITICAL > HIGH > MEDIUM > LOW. Always-visible combat feedback outranks purely cosmetic flourish,
  * so when the cap is hit, ambient/decorative particles are the ones evicted, never gameplay signal. */
