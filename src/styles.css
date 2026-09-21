@@ -710,6 +710,20 @@ button {
   text-transform: uppercase;
 }
 
+.hud-run-event {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ff8f5c;
+  text-shadow: 0 0 8px rgba(255, 143, 92, 0.7);
+  animation: hud-combo-pulse 0.5s ease-in-out infinite;
+}
+
+.hud-run-event-supplyDrop {
+  color: #7fe0ff;
+  text-shadow: 0 0 8px rgba(127, 224, 255, 0.7);
+}
+
 .hud-minimap {
   position: absolute;
   top: 14px;
@@ -749,6 +763,33 @@ button {
   border-radius: 50%;
   background: var(--accent-cyan);
   box-shadow: 0 0 6px rgba(91, 227, 227, 1);
+}
+
+.hud-minimap-blackout {
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(214, 69, 69, 0.5);
+}
+
+.hud-event-toast {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #ffcf5c;
+  text-shadow: 0 0 16px rgba(255, 207, 92, 0.8), 0 2px 6px rgba(0, 0, 0, 0.9);
+  text-align: center;
+  pointer-events: none;
+  animation: hud-event-toast-fade 2.6s ease-out forwards;
+}
+
+@keyframes hud-event-toast-fade {
+  0% { opacity: 0; transform: translate(-50%, -40%); }
+  12% { opacity: 1; transform: translate(-50%, -50%); }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .hud-xp-bar {

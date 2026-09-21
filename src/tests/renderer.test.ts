@@ -23,4 +23,10 @@ describe('getVignetteEdgeColor', () => {
     const result = getVignetteEdgeColor(1, false, false)
     expect(result.color).toBe('0, 0, 0')
   })
+
+  it('overrides everything with a near-total black vignette during Blackout, even at low health with a boss up', () => {
+    const result = getVignetteEdgeColor(0.1, true, false, true)
+    expect(result.color).toBe('0, 0, 0')
+    expect(result.alpha).toBeGreaterThan(getVignetteEdgeColor(1, false, false).alpha)
+  })
 })

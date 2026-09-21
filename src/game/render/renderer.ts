@@ -1198,7 +1198,11 @@ export function getVignetteEdgeColor(
   healthRatio: number,
   bossAlive: boolean,
   colorblindMode: boolean,
+  blackout = false,
 ): { color: string; alpha: number } {
+  if (blackout) {
+    return { color: '0, 0, 0', alpha: 0.88 }
+  }
   if (healthRatio < 0.3) {
     return { color: '190, 20, 20', alpha: 0.4 }
   }
@@ -1219,9 +1223,10 @@ function drawVignette(ctx: CanvasRenderingContext2D, engine: GameEngine, colorbl
   )
   const healthRatio = engine.player.maxHealth > 0 ? engine.player.health / engine.player.maxHealth : 1
   const bossAlive = engine.enemyList.some((e) => e.alive && enemyDefs[e.defId]?.behavior === 'boss')
-  const base = getVignetteEdgeColor(healthRatio, bossAlive, colorblindMode)
+  const blackout = engine.runEvents.active?.kind === 'blackout'
+  const base = getVignetteEdgeColor(healthRatio, bossAlive, colorblindMode, blackout)
   let edgeAlpha = base.alpha
-  if (healthRatio < 0.3) {
+  if (healthRatio < 0.3 && !blackout) {
     const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 6) * 0.5
     edgeAlpha = 0.4 + pulse * 0.3
   }

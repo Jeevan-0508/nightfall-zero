@@ -8,6 +8,7 @@ import type {
   MapDefinition,
   EngineEvent,
   Grenade,
+  Pickup,
   EngineEventType,
   EngineStats,
   GameStatus,
@@ -23,7 +24,7 @@ import { weapons, weaponOrder, assaultRifle } from '../../content/weapons'
 import { enemies as enemyDefs, overlord, executioner } from '../../content/enemies'
 import { pickMap } from '../../content/maps'
 import { getWaveDefinition } from '../../content/waves'
-import { createEnemy, createEnemyProjectile, createGrenade, createPlayer, rollElite, ELITE_DAMAGE_MULTIPLIER, ELITE_XP_MULTIPLIER } from '../entities/factories'
+import { createEnemy, createEnemyProjectile, createGrenade, createPickup, createPlayer, rollElite, ELITE_DAMAGE_MULTIPLIER, ELITE_XP_MULTIPLIER } from '../entities/factories'
 import { pickUpgradeChoices, type UpgradeOption } from '../../content/upgrades'
 import { updateEnemyMovement } from '../ai/enemyAI'
 import { updateBoss } from '../ai/bossAI'
@@ -64,6 +65,13 @@ import {
   isSynergyActive,
   type UpgradeTheme,
 } from '../combat/synergies'
+import {
+  createRunEventState,
+  tickRunEvent,
+  maybeStartRunEvent as rollRunEvent,
+  endActiveRunEvent,
+  type RunEventState,
+} from '../events/runEvents'
 
 /** Brief pause + name callout before a freshly spawned boss starts acting, reusing the existing
  * spawn-ring particle and bossSpawn audio cue rather than adding new VFX/audio. */
@@ -108,6 +116,12 @@ const GRENADE_FUSE = 1.0
 const GRENADE_DRAG = 3
 const OVERCHARGE_FIRE_RATE_MULT = 1.4
 const OVERCHARGE_SPEED_MULT = 1.3
+const SUPPLY_DROP_HEAL_RATIO = 0.3
+const SUPPLY_DROP_XP = 25
+const PICKUP_COLLECT_RADIUS = 30
+const HUNTED_INTERVAL_MULTIPLIER = 0.55
+const HUNTED_BIAS_BONUS = 0.6
+const EVENT_TOAST_DURATION = 2.6
 
 export class GameEngine {
   player: Player
@@ -115,6 +129,7 @@ export class GameEngine {
   projectiles: Projectile[] = []
   enemyProjectiles: EnemyProjectile[] = []
   grenades: Grenade[] = []
+  pickups: Pickup[] = []
   particles: Particle[] = []
   wave: WaveState = createWaveState()
   stats: EngineStats = { kills: 0, shotsFired: 0, shotsHit: 0, survivalTime: 0, waveReached: 0 }
@@ -125,10 +140,13 @@ export class GameEngine {
   recoilAmount = 0
   director: DirectorState = createDirectorState()
   telemetry: TelemetryState = createTelemetryState()
+  runEvents: RunEventState = createRunEventState()
   pendingUpgradeChoices: UpgradeOption[] = []
   chosenUpgrades: UpgradeOption[] = []
   private bossEntranceId: number | null = null
   private bossEntranceTimer = 0
+  private eventToastText: string | null = null
+  private eventToastTimer = 0
   map: MapDefinition
   mode: GameModeDefinition
   readonly seed: number
@@ -189,6 +207,11 @@ export class GameEngine {
     this.events.push({ type })
   }
 
+  private showEventToast(text: string): void {
+    this.eventToastText = text
+    this.eventToastTimer = EVENT_TOAST_DURATION
+  }
+
   update(dt: number, input: InputState): void {
     if (this.status !== 'playing') return
 
@@ -204,6 +227,9 @@ export class GameEngine {
     this.updateProjectiles(dt)
     this.updateEnemyProjectiles(dt)
     this.updateGrenades(dt)
+    this.updatePickups(dt)
+    tickRunEvent(this.runEvents, dt)
+    if (this.eventToastTimer > 0) this.eventToastTimer = Math.max(0, this.eventToastTimer - dt)
     this.updateSpawning(dt)
     this.updateEnemies(dt)
     this.resolveProjectileHits()
@@ -329,7 +355,7 @@ export class GameEngine {
 
     if (def.id === 'dash') this.activateDash()
     else if (def.id === 'grenade') this.activateGrenade()
-    else if (def.id === 'overcharge') this.pushEvent('overchargeActivated')
+    else if (def.id === 'overcharge') { this.pushEvent('overchargeActivated'); this.showEventToast('OVERCHARGE ACTIVE') }
   }
 
   private activateDash(): void {
@@ -416,11 +442,17 @@ export class GameEngine {
   private updateSpawning(dt: number): void {
     const def = getWaveDefinition(this.wave.waveIndex || 1)
     if (this.wave.waveInProgress) {
+      const hunted = this.runEvents.active?.kind === 'hunted'
       const modifier = getSpawnModifier(this.director)
-      applyDirectorBias(this.wave.spawnQueue, modifier.toughEnemyBias)
+      applyDirectorBias(this.wave.spawnQueue, modifier.toughEnemyBias + (hunted ? HUNTED_BIAS_BONUS : 0))
       applyProfileCounter(this.wave.spawnQueue, this.telemetry.profile)
       applyWeaponProfileCounter(this.wave.spawnQueue, this.telemetry.weaponProfile)
-      const result = updateWaveManager(this.wave, dt, def.spawnIntervalMs * modifier.intervalMultiplier * this.mode.spawnIntervalMultiplier)
+      const huntedIntervalMultiplier = hunted ? HUNTED_INTERVAL_MULTIPLIER : 1
+      const result = updateWaveManager(
+        this.wave,
+        dt,
+        def.spawnIntervalMs * modifier.intervalMultiplier * this.mode.spawnIntervalMultiplier * huntedIntervalMultiplier,
+      )
       if (result.spawnDefId) {
         const enemyDef = enemyDefs[result.spawnDefId]
         if (enemyDef) {
@@ -440,8 +472,52 @@ export class GameEngine {
         const nextWaveIndex = this.wave.waveIndex + 1
         startWave(this.wave, nextWaveIndex)
         this.maybeSpawnBoss(nextWaveIndex)
+        this.maybeStartRunEvent(nextWaveIndex)
       }
     }
+  }
+
+  /** Rolled once per wave start (rare, bounded - see runEvents.ts). Blackout and Hunted are
+   * duration-only flags read elsewhere; Supply Drop additionally spawns the one pickup it grants. */
+  private maybeStartRunEvent(waveIndex: number): void {
+    const kind = rollRunEvent(this.runEvents, waveIndex, this.rng)
+    if (!kind) return
+    if (kind === 'blackout') {
+      this.pushEvent('blackoutStart')
+      this.showEventToast('BLACKOUT: RADAR DOWN')
+    } else if (kind === 'hunted') {
+      this.pushEvent('huntedStart')
+      this.showEventToast('HUNTED: THEY KNOW WHERE YOU ARE')
+    } else if (kind === 'supplyDrop') {
+      const pos = pickSpawnPosition(this.rng, this.player.position, this.map.obstacles)
+      const duration = this.runEvents.active?.remaining ?? 14
+      this.pickups.push(createPickup(pos, duration))
+      spawnSpawnRing(this.particles, pos)
+      this.pushEvent('supplyDropSpawned')
+      this.showEventToast('SUPPLY DROP INCOMING')
+    }
+  }
+
+  /** Supply Drop's reward: heal + a flat XP bump, both reusing existing player fields rather than
+   * a new currency - collecting resolves the event immediately instead of waiting out its timer. */
+  private updatePickups(dt: number): void {
+    const remaining: Pickup[] = []
+    for (const pickup of this.pickups) {
+      pickup.ttl -= dt
+      if (pickup.ttl <= 0) continue
+
+      if (distance(this.player.position, pickup.position) <= PICKUP_COLLECT_RADIUS) {
+        this.player.health = Math.min(this.player.maxHealth, this.player.health + this.player.maxHealth * SUPPLY_DROP_HEAL_RATIO)
+        this.awardXp(SUPPLY_DROP_XP)
+        spawnLevelUpBurst(this.particles, this.rng, pickup.position)
+        endActiveRunEvent(this.runEvents)
+        this.pushEvent('supplyDropCollected')
+        this.showEventToast('SUPPLY DROP COLLECTED')
+        continue
+      }
+      remaining.push(pickup)
+    }
+    this.pickups = remaining
   }
 
   /**
@@ -803,6 +879,14 @@ export class GameEngine {
       radarBlips: this.enemyList
         .filter((e) => e.alive)
         .map((e) => ({ id: e.id, x: e.position.x, y: e.position.y, boss: enemyDefs[e.defId]?.behavior === 'boss' })),
+      runEvent: this.runEvents.active
+        ? {
+            kind: this.runEvents.active.kind,
+            remaining: this.runEvents.active.remaining,
+            totalDuration: this.runEvents.active.totalDuration,
+          }
+        : null,
+      eventToast: this.eventToastTimer > 0 && this.eventToastText ? { text: this.eventToastText } : null,
       debug: {
         intensity: this.director.intensity,
         calmActive: this.director.calmTimer > 0,

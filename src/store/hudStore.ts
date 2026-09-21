@@ -28,6 +28,8 @@ const initialSnapshot: HudSnapshot = {
   combo: 0,
   playerPosition: { x: 480, y: 300 },
   radarBlips: [],
+  runEvent: null,
+  eventToast: null,
   debug: {
     intensity: 0,
     calmActive: false,

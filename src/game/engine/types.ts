@@ -195,6 +195,13 @@ export interface Grenade {
   damage: number
 }
 
+/** A Supply Drop reward: sits at a fixed point until the player walks up to it or its window expires. */
+export interface Pickup {
+  id: number
+  position: Vector2
+  ttl: number
+}
+
 export type ParticleKind =
   | 'muzzle'
   | 'impact'
@@ -286,6 +293,10 @@ export type EngineEventType =
   | 'bossCharge'
   | 'bossBarrage'
   | 'bossDefeated'
+  | 'blackoutStart'
+  | 'huntedStart'
+  | 'supplyDropSpawned'
+  | 'supplyDropCollected'
 
 export interface EngineEvent {
   type: EngineEventType
@@ -347,4 +358,6 @@ export interface HudSnapshot {
   playerPosition: Vector2
   radarBlips: { id: number; x: number; y: number; boss: boolean }[]
   debug: DirectorDebugInfo
+  runEvent: { kind: 'blackout' | 'hunted' | 'supplyDrop'; remaining: number; totalDuration: number } | null
+  eventToast: { text: string } | null
 }

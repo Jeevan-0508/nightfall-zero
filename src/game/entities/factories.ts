@@ -6,6 +6,7 @@ import type {
   EnemyDefinition,
   EnemyProjectile,
   Grenade,
+  Pickup,
   Player,
   PlayerUpgrades,
   WeaponDefinition,
@@ -171,6 +172,13 @@ export function createGrenade(
     explosionRadius,
     damage,
   }
+}
+
+let pickupIdCounter = 0
+
+export function createPickup(position: Vector2, ttl: number): Pickup {
+  pickupIdCounter += 1
+  return { id: pickupIdCounter, position: { ...position }, ttl }
 }
 
 export function resetGrenadeIdCounter(): void {

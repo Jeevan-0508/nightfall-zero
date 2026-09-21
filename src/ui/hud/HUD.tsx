@@ -14,6 +14,8 @@ export function HUD() {
   const healthPct = Math.max(0, (snapshot.health / snapshot.maxHealth) * 100)
   const armorPct = Math.max(0, (snapshot.armor / snapshot.maxArmor) * 100)
   const xpPct = Math.max(0, Math.min(100, (snapshot.xp / snapshot.xpToNext) * 100))
+  const blackout = snapshot.runEvent?.kind === 'blackout'
+  const visibleBlips = blackout ? snapshot.radarBlips.filter((b) => b.boss) : snapshot.radarBlips
 
   return (
     <div className="hud">
@@ -29,10 +31,15 @@ export function HUD() {
         {snapshot.activeSynergies.length > 0 && (
           <div className="hud-synergy">{snapshot.activeSynergies.map((t) => t.toUpperCase()).join(' + ')} SYNERGY</div>
         )}
+        {snapshot.runEvent && (
+          <div className={`hud-run-event hud-run-event-${snapshot.runEvent.kind}`}>
+            {snapshot.runEvent.kind.toUpperCase()} &middot; {Math.ceil(snapshot.runEvent.remaining)}s
+          </div>
+        )}
       </div>
 
-      <div className="hud-minimap">
-        {snapshot.radarBlips.map((blip) => (
+      <div className={`hud-minimap${blackout ? ' hud-minimap-blackout' : ''}`}>
+        {visibleBlips.map((blip) => (
           <div
             key={blip.id}
             className={`hud-minimap-blip${blip.boss ? ' hud-minimap-blip-boss' : ''}`}
@@ -76,6 +83,12 @@ export function HUD() {
         <div className="hud-boss-entrance">
           <div className="hud-boss-entrance-name">{snapshot.bossEntrance.name}</div>
           <div className="hud-boss-entrance-sub">APPROACHING</div>
+        </div>
+      )}
+
+      {snapshot.eventToast && (
+        <div key={snapshot.eventToast.text} className="hud-event-toast">
+          {snapshot.eventToast.text}
         </div>
       )}
 
