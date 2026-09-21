@@ -5,6 +5,7 @@ import { applyDamage } from './damage'
 import { applyStatus, getDamageTakenMultiplier, MARK_DURATION, MARK_MULTIPLIER } from './statusEffects'
 import type { Rng } from '../engine/rng'
 import { spawnDeathBurst, spawnExplosion, spawnImpact } from '../engine/particles'
+import { killEnemy } from '../entities/factories'
 
 export interface ExplosionResult {
   enemiesHit: Enemy[]
@@ -42,7 +43,7 @@ export function resolveExplosion(
     const scaledDamage = damage * getDamageTakenMultiplier(enemy)
     const died = applyDamage(enemy, scaledDamage)
     if (died) {
-      enemy.alive = false
+      killEnemy(enemy)
       spawnDeathBurst(particles, rng, enemy.position, def.color)
       enemiesKilled.push(enemy)
     } else {

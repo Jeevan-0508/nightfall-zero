@@ -157,6 +157,9 @@ export function updateEnemyMovement(
   if (enemy.hitFlash > 0) {
     enemy.hitFlash = Math.max(0, enemy.hitFlash - dt)
   }
+  if (enemy.spawnTimer > 0) {
+    enemy.spawnTimer = Math.max(0, enemy.spawnTimer - dt)
+  }
 
   if (def.behavior === 'stalker') {
     enemy.phaseTimer -= dt

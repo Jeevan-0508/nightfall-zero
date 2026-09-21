@@ -2,6 +2,7 @@ import type { GameEngine } from '../engine/GameEngine'
 import { ARENA_HEIGHT, ARENA_WIDTH } from '../engine/types'
 import type { BossStage, Enemy, EnemyDefinition, Projectile } from '../engine/types'
 import { SHIELD_CAPACITY } from '../combat/eliteModifiers'
+import { DEATH_ANIMATION_DURATION, SPAWN_ANIMATION_DURATION } from '../entities/factories'
 import { enemies as enemyDefs } from '../../content/enemies'
 import { drawPlayerCharacter } from './characters/playerCharacter'
 import { drawEnemyCharacter, drawEyesAtHead, type EnemyAnimInputs } from './characters/enemyCharacters'
@@ -537,9 +538,13 @@ function drawPropScrapPile(ctx: CanvasRenderingContext2D, radius: number, seed: 
 
 // ---------- Enemy silhouettes: src/game/render/characters/enemyCharacters.ts ----------
 
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n))
+}
+
 function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
   for (const enemy of engine.enemyList) {
-    if (!enemy.alive) continue
+    if (!enemy.alive && enemy.deathTimer <= 0) continue
     const def = enemyDefs[enemy.defId]
     if (!def) continue
 
@@ -557,65 +562,82 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
 
     ctx.globalAlpha = enemy.cloaked ? 0.25 : 1
 
-    if (def.explosionRadius || enemy.eliteModifier === 'explosive') {
-      const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 9) * 0.5
-      ctx.beginPath()
-      ctx.arc(0, 0, def.radius + 4 + pulse * 4, 0, Math.PI * 2)
-      ctx.strokeStyle = `rgba(224, 71, 58, ${0.3 + pulse * 0.4})`
-      ctx.lineWidth = 2
-      ctx.stroke()
-    }
-
-    if (enemy.eliteModifier === 'shielded' && enemy.shieldRemaining > 0) {
-      const shieldRatio = enemy.shieldRemaining / SHIELD_CAPACITY
-      ctx.beginPath()
-      ctx.arc(0, 0, def.radius + 5, 0, Math.PI * 2 * shieldRatio)
-      ctx.strokeStyle = 'rgba(90, 180, 255, 0.75)'
-      ctx.lineWidth = 3
-      ctx.stroke()
-    }
-
-    if (enemy.teleportWarning) {
-      const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 24) * 0.5
-      ctx.beginPath()
-      ctx.arc(0, 0, def.radius + 6 + pulse * 5, 0, Math.PI * 2)
-      ctx.strokeStyle = `rgba(200, 90, 255, ${0.45 + pulse * 0.4})`
-      ctx.lineWidth = 2.5
-      ctx.stroke()
-    }
-
-    if (enemy.bossPhase === 'telegraph') {
-      const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 20) * 0.5
-      ctx.beginPath()
-      ctx.arc(0, 0, def.radius + 8 + pulse * 6, 0, Math.PI * 2)
-      ctx.strokeStyle = `rgba(255, 60, 60, ${0.5 + pulse * 0.4})`
-      ctx.lineWidth = 3
-      ctx.stroke()
-
-      if (enemy.bossAttackId === 'slam') {
+    if (enemy.alive) {
+      if (def.explosionRadius || enemy.eliteModifier === 'explosive') {
+        const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 9) * 0.5
         ctx.beginPath()
-        ctx.arc(0, 0, def.bossSlamRadius ?? 100, 0, Math.PI * 2)
-        ctx.strokeStyle = 'rgba(255, 60, 60, 0.35)'
+        ctx.arc(0, 0, def.radius + 4 + pulse * 4, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(224, 71, 58, ${0.3 + pulse * 0.4})`
         ctx.lineWidth = 2
         ctx.stroke()
       }
+
+      if (enemy.eliteModifier === 'shielded' && enemy.shieldRemaining > 0) {
+        const shieldRatio = enemy.shieldRemaining / SHIELD_CAPACITY
+        ctx.beginPath()
+        ctx.arc(0, 0, def.radius + 5, 0, Math.PI * 2 * shieldRatio)
+        ctx.strokeStyle = 'rgba(90, 180, 255, 0.75)'
+        ctx.lineWidth = 3
+        ctx.stroke()
+      }
+
+      if (enemy.teleportWarning) {
+        const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 24) * 0.5
+        ctx.beginPath()
+        ctx.arc(0, 0, def.radius + 6 + pulse * 5, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(200, 90, 255, ${0.45 + pulse * 0.4})`
+        ctx.lineWidth = 2.5
+        ctx.stroke()
+      }
+
+      if (enemy.bossPhase === 'telegraph') {
+        const pulse = 0.5 + Math.sin(engine.stats.survivalTime * 20) * 0.5
+        ctx.beginPath()
+        ctx.arc(0, 0, def.radius + 8 + pulse * 6, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(255, 60, 60, ${0.5 + pulse * 0.4})`
+        ctx.lineWidth = 3
+        ctx.stroke()
+
+        if (enemy.bossAttackId === 'slam') {
+          ctx.beginPath()
+          ctx.arc(0, 0, def.bossSlamRadius ?? 100, 0, Math.PI * 2)
+          ctx.strokeStyle = 'rgba(255, 60, 60, 0.35)'
+          ctx.lineWidth = 2
+          ctx.stroke()
+        }
+      }
+
+      if (def.behavior === 'boss') {
+        drawBossAura(ctx, enemy.defId, def.radius, engine.stats.survivalTime, enemy.bossStage)
+      }
+      if (enemy.elite && def.behavior !== 'boss') {
+        drawEliteHalo(ctx, def.radius, engine.stats.survivalTime)
+      }
+
+      if (enemy.statuses.some((s) => s.type === 'burn')) {
+        ctx.beginPath()
+        ctx.shadowColor = 'rgba(255, 120, 40, 0.8)'
+        ctx.shadowBlur = 10
+        ctx.fillStyle = 'rgba(255, 120, 40, 0.22)'
+        ctx.arc(0, 0, def.radius * 0.65, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.shadowBlur = 0
+      }
     }
 
-    if (def.behavior === 'boss') {
-      drawBossAura(ctx, enemy.defId, def.radius, engine.stats.survivalTime, enemy.bossStage)
-    }
-    if (enemy.elite && def.behavior !== 'boss') {
-      drawEliteHalo(ctx, def.radius, engine.stats.survivalTime)
-    }
-
-    if (enemy.statuses.some((s) => s.type === 'burn')) {
-      ctx.beginPath()
-      ctx.shadowColor = 'rgba(255, 120, 40, 0.8)'
-      ctx.shadowBlur = 10
-      ctx.fillStyle = 'rgba(255, 120, 40, 0.22)'
-      ctx.arc(0, 0, def.radius * 0.65, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.shadowBlur = 0
+    if (enemy.alive && enemy.spawnTimer > 0) {
+      const spawnProgress = clamp01(1 - enemy.spawnTimer / SPAWN_ANIMATION_DURATION)
+      const growScale = 0.3 + spawnProgress * 0.7
+      ctx.scale(growScale, growScale)
+      ctx.globalAlpha *= spawnProgress
+    } else if (!enemy.alive && enemy.deathTimer > 0) {
+      const deathProgress = clamp01(1 - enemy.deathTimer / DEATH_ANIMATION_DURATION)
+      if (def.behavior === 'stalker') {
+        ctx.translate(0, -deathProgress * 22)
+      } else {
+        ctx.scale(1 + deathProgress * 0.3, 1 - deathProgress * 0.5)
+      }
+      ctx.globalAlpha *= 1 - deathProgress
     }
 
     ctx.rotate(facing)
@@ -634,7 +656,7 @@ function drawEnemies(ctx: CanvasRenderingContext2D, engine: GameEngine): void {
     }
     ctx.rotate(-facing)
 
-    if (!enemy.cloaked) {
+    if (enemy.alive && !enemy.cloaked) {
       const barWidth = def.radius * 2
       const healthRatio = Math.max(0, enemy.health / enemy.maxHealth)
       ctx.fillStyle = 'rgba(0,0,0,0.6)'

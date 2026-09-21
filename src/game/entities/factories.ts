@@ -30,6 +30,18 @@ export function rollElite(rng: Rng, waveNumber: number): boolean {
   return rng() < eliteChanceForWave(waveNumber)
 }
 
+/** How long a freshly spawned enemy takes to scale/fade in, and how long a killed enemy's body lingers to squash/fade/dissipate out before it's fully gone from the render pass. */
+export const SPAWN_ANIMATION_DURATION = 0.35
+export const DEATH_ANIMATION_DURATION = 0.4
+/** An Exploder's own body fade matters less than its explosion burst, so cut its lingering window short. */
+const EXPLODER_DEATH_TIMER = 0.16
+
+/** Single point where an enemy is marked dead, so every kill path (direct hit, burn tick, contact explosion, AOE explosion) starts the same death-fade window instead of each setting `alive = false` inline. */
+export function killEnemy(enemy: Enemy): void {
+  enemy.alive = false
+  enemy.deathTimer = enemy.defId === 'exploder' ? EXPLODER_DEATH_TIMER : DEATH_ANIMATION_DURATION
+}
+
 let enemyIdCounter = 0
 
 function freshWeaponState(def: WeaponDefinition): WeaponState {
@@ -124,6 +136,8 @@ export function createEnemy(
     shieldRemaining: eliteModifier === 'shielded' ? SHIELD_CAPACITY : 0,
     teleportTimer: eliteModifier === 'teleporting' ? TELEPORT_INTERVAL : 0,
     teleportWarning: false,
+    spawnTimer: SPAWN_ANIMATION_DURATION,
+    deathTimer: 0,
   }
 }
 

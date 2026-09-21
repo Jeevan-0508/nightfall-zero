@@ -160,6 +160,8 @@ export interface Enemy {
   shieldRemaining: number
   teleportTimer: number
   teleportWarning: boolean
+  spawnTimer: number
+  deathTimer: number
 }
 
 export interface Projectile {

@@ -27,7 +27,7 @@ import { enemies as enemyDefs, overlord, executioner } from '../../content/enemi
 const MAX_ENEMY_RADIUS_FOR_HIT_QUERY = Math.max(...Object.values(enemyDefs).map((d) => d.radius))
 import { pickMap } from '../../content/maps'
 import { getWaveDefinition } from '../../content/waves'
-import { createEnemy, createEnemyProjectile, createGrenade, createPickup, createPlayer, rollElite, ELITE_DAMAGE_MULTIPLIER, ELITE_XP_MULTIPLIER } from '../entities/factories'
+import { createEnemy, createEnemyProjectile, createGrenade, createPickup, createPlayer, killEnemy, rollElite, ELITE_DAMAGE_MULTIPLIER, ELITE_XP_MULTIPLIER } from '../entities/factories'
 import { pickUpgradeChoices, type UpgradeOption } from '../../content/upgrades'
 import { updateEnemyMovement } from '../ai/enemyAI'
 import { updateBoss } from '../ai/bossAI'
@@ -598,6 +598,10 @@ export class GameEngine {
   }
 
   private updateEnemies(dt: number): void {
+    for (const enemy of this.enemyList) {
+      if (!enemy.alive && enemy.deathTimer > 0) enemy.deathTimer = Math.max(0, enemy.deathTimer - dt)
+    }
+
     const aliveEnemies = this.enemyList.filter((e) => e.alive)
     this.enemyGrid.rebuild(aliveEnemies)
     for (const enemy of aliveEnemies) {
@@ -606,6 +610,7 @@ export class GameEngine {
 
       if (def.behavior === 'boss') {
         if (enemy.hitFlash > 0) enemy.hitFlash = Math.max(0, enemy.hitFlash - dt)
+        if (enemy.spawnTimer > 0) enemy.spawnTimer = Math.max(0, enemy.spawnTimer - dt)
         if (this.bossEntranceId === enemy.id && this.bossEntranceTimer > 0) {
           this.bossEntranceTimer = Math.max(0, this.bossEntranceTimer - dt)
           continue // holds still, no attacks, while the entrance callout plays
@@ -793,7 +798,7 @@ export class GameEngine {
   /** Shared death branch for any damage source (direct hit or passive burn tick): explode if the enemy is an Exploder OR an Explosive elite, otherwise a plain death burst + kill credit. */
   private finalizeEnemyDeath(enemy: Enemy, def: EnemyDefinition, died: boolean): void {
     if (!died) return
-    enemy.alive = false
+    killEnemy(enemy)
     if ((def.explosionDamage && def.explosionRadius) || enemy.eliteModifier === 'explosive') {
       this.detonateEnemy(enemy, def)
     } else {
@@ -851,7 +856,7 @@ export class GameEngine {
       if (!def) continue
       if (circlesIntersect(enemy.position, def.radius, this.player.position, this.player.radius)) {
         if (def.explosionDamage && def.explosionRadius) {
-          enemy.alive = false
+          killEnemy(enemy)
           this.detonateEnemy(enemy, def)
           continue
         }
